@@ -77,6 +77,19 @@ export const getQuestionsController = async (req, res, next) => {
     next(error);
   }
 };
+export const getSingleQuestionController = async (req, res, next) => {
+  try {
+    const { questionHash } = req.params;
+
+    const result = await getSingleQuestionService({
+      questionHash,
+    });
+
+    res.status(StatusCodes.OK).json(result);
+  } catch (error) {
+    next(error);
+  }
+};
 
 export const getSimilarQuestionsController = async (req, res, next) => {
   try {
@@ -98,3 +111,7 @@ export const getSimilarQuestionsController = async (req, res, next) => {
         questionHash
       }
     });
+  } catch (error) {
+    next(error);
+  }
+};
