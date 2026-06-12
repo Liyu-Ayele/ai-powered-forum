@@ -24,4 +24,5 @@ router.post('/register', registerValidation, registerController);
  */
 router.post('/login', loginValidation, loginController);
 
+
 export default router;

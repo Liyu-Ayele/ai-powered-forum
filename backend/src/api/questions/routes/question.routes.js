@@ -1,15 +1,23 @@
 import express from "express";
+
 import {
   createQuestionController,
   getQuestionsController,
   getSingleQuestionController,
+  searchQuestionsSemanticController,
+  getSimilarQuestionsController,
 } from "../controller/question.controller.js";
+
 import {
   createQuestionValidation,
   getQuestionsValidation,
   getSingleQuestionValidation,
+  validateSearchQuestions,
+  validateSimilarQuestions,
 } from "../validations/question.validation.js";
+
 import { authenticateUser } from "../../../middleware/authentication.js";
+import { validationErrorHandler } from "../../../middleware/validation-handler.js";
 
 const router = express.Router();
 
@@ -60,6 +68,13 @@ router.get(
  * @access Private
  * @param questionHash - 16-character hex string
  */
+router.get(
+  '/:questionHash/similar',
+  validateSimilarQuestions,
+  validationErrorHandler,
+  getSimilarQuestionsController
+  );
+
 router.get(
   "/:questionHash",
   authenticateUser,

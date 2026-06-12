@@ -24,6 +24,10 @@
     "jsonwebtoken": "^9.0.3",
     "multer": "^2.1.1",
     "mysql2": "^3.18.2",
-    "pdf-parse": "^2.4.5"
+    "pdf-parse": "^2.4.5",
+    "swagger-jsdoc": "^6.3.0"
+  },
+  "devDependencies": {
+    "express-to-postman": "^1.1.3"
   }
 }
