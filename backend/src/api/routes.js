@@ -7,6 +7,8 @@ export const mainRouter = express.Router();
 
 // Authentication routes
 mainRouter.use("/auth", authRoutes);
+// mainRouter.use("/questions", questionRoutes);
+mainRouter.use("/answers", answerRoutes);
 
 // Question routes
 mainRouter.use("/questions", questionRoutes);
