@@ -1,20 +1,22 @@
-import express from 'express';
-import { generateQuestionDraftCoachController } from '../controller/question.controller.js';
-import { generateQuestionDraftCoachValidation } from '../validations/question.validation.js';
-import { authenticateUser } from '../../../middleware/authentication.js';
+import express from "express";
+import { authenticateUser } from "../../../middleware/authentication.js";
+import { createQuestionValidation, generateQuestionDraftCoachValidation } from "../validations/question.validation.js";
+import { createQuestionController,  generateQuestionDraftCoachController } from "../controller/question.controller.js";
 
 const router = express.Router();
 
-/**
- * @route POST /api/questions/draft-coach
- * @desc Get AI feedback and tips on a question draft
- * @access Protected
- */
 router.post(
   '/draft-coach',
   authenticateUser,
   generateQuestionDraftCoachValidation,
   generateQuestionDraftCoachController,
+);
+
+router.post(
+  "/",
+  authenticateUser,
+  createQuestionValidation,
+  createQuestionController,
 );
 
 export default router;
