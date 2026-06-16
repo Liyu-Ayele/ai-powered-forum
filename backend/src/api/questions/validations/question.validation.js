@@ -137,3 +137,41 @@ export const generateQuestionDraftCoachValidation = [
     .withMessage("Content must be at least 10 characters long"),
   validationErrorHandler,
 ];
+
+/**
+ * Update Question Validation
+ */
+export const updateQuestionValidation = [
+  param("questionHash")
+    .matches(/^[a-f0-9]{16}$/)
+    .withMessage("Question hash must be a 16-character lowercase hex string"),
+
+  body("title")
+    .notEmpty()
+    .withMessage("Title is required")
+    .isString()
+    .withMessage("Title must be a string")
+    .isLength({ min: 5, max: 255 })
+    .withMessage("Title must be between 5 and 255 characters"),
+
+  body("content")
+    .notEmpty()
+    .withMessage("Content is required")
+    .isString()
+    .withMessage("Content must be a string")
+    .isLength({ min: 10 })
+    .withMessage("Content must be at least 10 characters long"),
+
+  validationErrorHandler,
+];
+
+/**
+ * Delete Question Validation
+ */
+export const deleteQuestionValidation = [
+  param("questionHash")
+    .matches(/^[a-f0-9]{16}$/)
+    .withMessage("Question hash must be a 16-character lowercase hex string"),
+
+  validationErrorHandler,
+];

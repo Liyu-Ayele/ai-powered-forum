@@ -8,6 +8,8 @@ import {
   getSimilarQuestionsController,
   generateQuestionDraftCoachController,
   evaluateAnswerFit,
+  updateQuestionController,
+  deleteQuestionController,
 } from "../controller/question.controller.js";
 
 import {
@@ -17,6 +19,8 @@ import {
   validateSearchQuestions,
   validateSimilarQuestions,
   generateQuestionDraftCoachValidation,
+  updateQuestionValidation,
+  deleteQuestionValidation,
 } from "../validations/question.validation.js";
 
 import { authenticateUser } from "../../../middleware/authentication.js";
@@ -110,6 +114,30 @@ router.get(
   authenticateUser,
   getSingleQuestionValidation,
   getSingleQuestionController,
+);
+
+/**
+ * @route PUT /api/questions/:questionHash
+ * @desc Update a question (author only)
+ * @access Private
+ */
+router.put(
+  "/:questionHash",
+  authenticateUser,
+  updateQuestionValidation,
+  updateQuestionController
+);
+
+/**
+ * @route DELETE /api/questions/:questionHash
+ * @desc Delete a question (author only)
+ * @access Private
+ */
+router.delete(
+  "/:questionHash",
+  authenticateUser,
+  deleteQuestionValidation,
+  deleteQuestionController
 );
 
 export default router;

@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import ReactMarkdown from 'react-markdown';
-import { Bold, Italic, Code, Link2, MessageSquare, ThumbsUp } from 'lucide-react';
+import { Bold, Italic, Code, Link2, MessageSquare, ThumbsUp, Trash2, Edit2, Bookmark } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { questionService } from '../../services/questions/question.service.js';
 import { answerService } from '../../services/answers/answer.service.js';
@@ -48,6 +48,19 @@ export default function QuestionDetail() {
   const [isCheckingFit, setIsCheckingFit] = useState(false);
   const [fitError, setFitError] = useState(null);
 
+  const [isBookmarked, setIsBookmarked] = useState(false);
+  
+  // Edit logic
+  const [isEditing, setIsEditing] = useState(false);
+  const [editTitle, setEditTitle] = useState('');
+  const [editContent, setEditContent] = useState('');
+  const [isSavingEdit, setIsSavingEdit] = useState(false);
+  const [editError, setEditError] = useState(null);
+
+  // Delete logic
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+
   const isOwnQuestion = isAuthoredByUser(question, user);
 
   useEffect(() => {
@@ -59,6 +72,13 @@ export default function QuestionDetail() {
         const data = response.data || response;
         setQuestion(data.question);
         setAnswers(data.answers || []);
+        
+        // Also check if bookmarked
+        if (user) {
+          const { bookmarkService } = await import('../../services/bookmarks/bookmark.service.js');
+          const bookmarkRes = await bookmarkService.checkBookmark(questionHash);
+          setIsBookmarked(bookmarkRes.data?.bookmarked || false);
+        }
       } catch (err) {
         setError(err.message || 'Failed to load question.');
       } finally {
@@ -179,6 +199,58 @@ export default function QuestionDetail() {
     }
   };
 
+  const handleToggleBookmark = async () => {
+    const prevBookmarked = isBookmarked;
+    setIsBookmarked(!prevBookmarked);
+    try {
+      const { bookmarkService } = await import('../../services/bookmarks/bookmark.service.js');
+      const res = await bookmarkService.toggleBookmark(question.id);
+      setIsBookmarked(res.bookmarked);
+    } catch (err) {
+      console.error("Failed to toggle bookmark", err);
+      setIsBookmarked(prevBookmarked);
+    }
+  };
+
+  const handleSaveEdit = async () => {
+    if (!editTitle.trim() || editTitle.trim().length < 5) {
+      setEditError("Title must be at least 5 characters.");
+      return;
+    }
+    if (!editContent.trim() || editContent.trim().length < 10) {
+      setEditError("Content must be at least 10 characters.");
+      return;
+    }
+
+    setIsSavingEdit(true);
+    setEditError(null);
+    try {
+      await questionService.updateQuestion(questionHash, {
+        title: editTitle,
+        content: editContent
+      });
+      setQuestion(prev => ({ ...prev, title: editTitle, content: editContent }));
+      setIsEditing(false);
+    } catch (err) {
+      setEditError(err.message || "Failed to save edits.");
+    } finally {
+      setIsSavingEdit(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    setIsDeleting(true);
+    try {
+      await questionService.deleteQuestion(questionHash);
+      window.location.href = '/dashboard';
+    } catch (err) {
+      console.error("Failed to delete question", err);
+      setIsDeleting(false);
+      setShowDeleteConfirm(false);
+      // Optional: show error toast
+    }
+  };
+
   const insertFormatting = (before, after) => {
     const textarea = document.querySelector(`.${styles.editorTextarea}`);
     if (!textarea) return;
@@ -258,20 +330,82 @@ export default function QuestionDetail() {
         <div>
           <article className={styles.card}>
             <div className={styles.authorMeta}>
-              <div
-                className={styles.avatar}
-                style={{ background: getAvatarColor(questionAuthorName) }}
-              >
-                {getInitials(question.author?.firstName, question.author?.lastName)}
-              </div>
-              <div className={styles.authorDetails}>
-                <div className={styles.authorName}>{questionAuthorName}</div>
-                <div className={styles.authorDate}>
-                  Posted {timeAgo(question.createdAt)}
+              <div className={styles.authorInfoLeft}>
+                <div
+                  className={styles.avatar}
+                  style={{ background: getAvatarColor(questionAuthorName) }}
+                >
+                  {getInitials(question.author?.firstName, question.author?.lastName)}
+                </div>
+                <div className={styles.authorDetails}>
+                  <div className={styles.authorName}>{questionAuthorName}</div>
+                  <div className={styles.authorDate}>
+                    Posted {timeAgo(question.createdAt)}
+                    {question.createdAt !== question.updatedAt && ' (edited)'}
+                  </div>
                 </div>
               </div>
+
+              {isOwnQuestion && !isEditing && (
+                <div className={styles.authorActions}>
+                  <button 
+                    onClick={() => {
+                      setEditTitle(question.title);
+                      setEditContent(question.content);
+                      setIsEditing(true);
+                    }} 
+                    className={styles.editBtn}
+                    title="Edit question"
+                  >
+                    <Edit2 size={16} />
+                  </button>
+                  <button 
+                    onClick={() => setShowDeleteConfirm(true)} 
+                    className={styles.deleteBtn}
+                    title="Delete question"
+                  >
+                    <Trash2 size={16} />
+                  </button>
+                </div>
+              )}
             </div>
 
+            {isEditing ? (
+              <div className={styles.editForm}>
+                <input
+                  type="text"
+                  className={styles.editInput}
+                  value={editTitle}
+                  onChange={(e) => setEditTitle(e.target.value)}
+                  placeholder="Question title"
+                />
+                <textarea
+                  className={styles.editTextarea}
+                  value={editContent}
+                  onChange={(e) => setEditContent(e.target.value)}
+                  placeholder="Question details"
+                  rows={6}
+                />
+                {editError && <div className={styles.errorText}>{editError}</div>}
+                <div className={styles.editActions}>
+                  <button 
+                    onClick={() => setIsEditing(false)} 
+                    className={styles.cancelBtn}
+                    disabled={isSavingEdit}
+                  >
+                    Cancel
+                  </button>
+                  <button 
+                    onClick={handleSaveEdit} 
+                    className={styles.saveBtn}
+                    disabled={isSavingEdit}
+                  >
+                    {isSavingEdit ? 'Saving...' : 'Save Changes'}
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <>
                 <h2 className={styles.threadTitle}>{question.title}</h2>
 
                 <div className={styles.postContent}>
@@ -297,6 +431,16 @@ export default function QuestionDetail() {
                     <ThumbsUp size={16} />
                     <span className={styles.voteScore}>{question.likes || 0}</span>
                   </button>
+                  <button 
+                    className={`${styles.btnAction} ${isBookmarked ? styles.bookmarkActive : ''}`}
+                    onClick={handleToggleBookmark}
+                  >
+                    <Bookmark 
+                      size={14} 
+                      fill={isBookmarked ? 'currentColor' : 'none'} 
+                    />
+                    {isBookmarked ? 'Saved' : 'Save'}
+                  </button>
                   <button type='button' className={styles.btnAction}>
                     <svg width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2'>
                       <path d='M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z' />
@@ -304,6 +448,8 @@ export default function QuestionDetail() {
                     {answers.length} {answers.length === 1 ? 'Answer' : 'Answers'}
                   </button>
                 </div>
+              </>
+            )}
           </article>
 
           <section className={styles.answersContainer}>
@@ -518,6 +664,31 @@ export default function QuestionDetail() {
           </div>
         </aside>
       </div>
+
+      {showDeleteConfirm && (
+        <div className={styles.modalOverlay}>
+          <div className={styles.modalContent}>
+            <h3>Delete Question</h3>
+            <p>Are you sure you want to delete this question? This action cannot be undone and will also delete all associated answers.</p>
+            <div className={styles.modalActions}>
+              <button 
+                onClick={() => setShowDeleteConfirm(false)} 
+                className={styles.cancelBtn}
+                disabled={isDeleting}
+              >
+                Cancel
+              </button>
+              <button 
+                onClick={handleDelete} 
+                className={styles.deleteBtnConfirm}
+                disabled={isDeleting}
+              >
+                {isDeleting ? 'Deleting...' : 'Delete Permanently'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

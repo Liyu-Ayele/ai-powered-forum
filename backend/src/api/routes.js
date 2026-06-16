@@ -5,6 +5,7 @@ import questionRoutes from "./questions/routes/question.routes.js";
 import answerRoutes from "./answer/routes/answer.route.js";
 import ragRoutes from "./rag/routes/rag.routes.js";
 import voteRoutes from "./votes/routes/vote.routes.js";
+import bookmarkRoutes from "./bookmarks/routes/bookmark.routes.js";
 
 export const mainRouter = express.Router();
 
@@ -33,3 +34,9 @@ mainRouter.use("/rag/documents", ragRoutes);
  */
 mainRouter.use("/votes", voteRoutes);
 mainRouter.use("/rag", ragRoutes);
+
+/**
+ * Bookmarks Routes
+ */
+mainRouter.use("/bookmarks", bookmarkRoutes);
+

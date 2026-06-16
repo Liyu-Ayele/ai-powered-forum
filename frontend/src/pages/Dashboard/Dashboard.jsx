@@ -14,6 +14,7 @@ import {
   AlertCircle,
   HelpCircle,
   ThumbsUp,
+  Bookmark,
 } from 'lucide-react';
 export default function Dashboard() {
   const [questions, setQuestions] = useState([]);
@@ -72,10 +73,27 @@ export default function Dashboard() {
         }
       }
 
+      // Map over questions to add bookmark status if needed, or simply let the API return it if implemented
+      // Since we just added the bookmark API, we should fetch bookmarks for the user and cross-reference
+      // Wait, we can just fetch the user's bookmarks and add the `isBookmarked` boolean.
+      let finalData = data;
+      try {
+        const { bookmarkService } = await import('../../services/bookmarks/bookmark.service.js');
+        // Optimization: if there are many questions, we could add a bulk check endpoint, but for now we'll fetch the user's bookmarks list and check against it.
+        const bookmarks = await bookmarkService.getBookmarks({ limit: 100 });
+        const bookmarkedIds = new Set((bookmarks.data || []).map(b => b.id));
+        finalData = data.map(q => ({
+          ...q,
+          isBookmarked: bookmarkedIds.has(q.id)
+        }));
+      } catch (err) {
+        console.error("Failed to load bookmark status", err);
+      }
+
       if (isLoadMore) {
-        setQuestions(prev => [...prev, ...data]);
+        setQuestions(prev => [...prev, ...finalData]);
       } else {
-        setQuestions(data);
+        setQuestions(finalData);
       }
       setHasMore(currentHasMore);
     } catch (err) {
@@ -128,6 +146,41 @@ export default function Dashboard() {
     setSearchQuery('');
     setPage(1);
     fetchQuestions('', searchMode, 1, false);
+  };
+
+  const handleToggleBookmark = async (e, questionId) => {
+    e.preventDefault(); // Prevent navigating to the question link
+    
+    // Optimistic UI update
+    setQuestions(prev => prev.map(q => {
+      if (q.id === questionId) {
+        return { ...q, isBookmarked: !q.isBookmarked };
+      }
+      return q;
+    }));
+
+    try {
+      // Import happens at top of file, we will add it next
+      const { bookmarkService } = await import('../../services/bookmarks/bookmark.service.js');
+      const response = await bookmarkService.toggleBookmark(questionId);
+      
+      // Sync with actual backend state
+      setQuestions(prev => prev.map(q => {
+        if (q.id === questionId) {
+          return { ...q, isBookmarked: response.bookmarked };
+        }
+        return q;
+      }));
+    } catch (err) {
+      console.error("Failed to toggle bookmark", err);
+      // Revert optimistic update on error
+      setQuestions(prev => prev.map(q => {
+        if (q.id === questionId) {
+          return { ...q, isBookmarked: !q.isBookmarked };
+        }
+        return q;
+      }));
+    }
   };
 
   return (
@@ -265,7 +318,21 @@ export default function Dashboard() {
                 ref={isLastElement ? lastQuestionElementRef : null}
               >
                 <div className={styles.cardContent}>
-                  <h4 className={styles.questionTitle}>{question.title}</h4>
+                  <div className={styles.titleRow}>
+                    <h4 className={styles.questionTitle}>{question.title}</h4>
+                    <button
+                      className={styles.bookmarkBtn}
+                      onClick={(e) => handleToggleBookmark(e, question.id)}
+                      title={question.isBookmarked ? "Remove bookmark" : "Bookmark question"}
+                      aria-label="Bookmark question"
+                    >
+                      <Bookmark 
+                        size={20} 
+                        className={question.isBookmarked ? styles.bookmarkedIcon : styles.bookmarkIcon} 
+                        fill={question.isBookmarked ? "currentColor" : "none"} 
+                      />
+                    </button>
+                  </div>
                   <p className={styles.questionSnippet}>
                     {question.content
                       ? question.content.replace(/[#*`]/g, '').slice(0, 140) +

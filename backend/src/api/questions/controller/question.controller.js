@@ -8,6 +8,8 @@ import {
   getSingleQuestionService,
   getSimilarQuestionsService,
   searchQuestionsSemanticService,
+  updateQuestionService,
+  deleteQuestionService,
 } from "../service/question.service.js";
 import { generateQuestionDraftCoachService } from "../service/geminiTextCoach.service.js";
 
@@ -294,3 +296,37 @@ function parseEvaluation(text) {
   }
 }
 
+export const updateQuestionController = async (req, res, next) => {
+  try {
+    const { questionHash } = req.params;
+    const { title, content } = req.body;
+    const userId = req.user?.id;
+
+    const result = await updateQuestionService({
+      questionHash,
+      userId,
+      title,
+      content,
+    });
+
+    res.status(StatusCodes.OK).json(result);
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const deleteQuestionController = async (req, res, next) => {
+  try {
+    const { questionHash } = req.params;
+    const userId = req.user?.id;
+
+    const result = await deleteQuestionService({
+      questionHash,
+      userId,
+    });
+
+    res.status(StatusCodes.OK).json(result);
+  } catch (error) {
+    next(error);
+  }
+};

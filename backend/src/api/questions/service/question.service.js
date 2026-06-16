@@ -6,6 +6,7 @@ import { safeExecute } from "../../../../db/config.js";
 import {
   ServiceUnavailableError,
   NotFoundError,
+  ForbiddenError,
 } from "../../../utils/errors/index.js";
 
 import { embedQuery } from "../../../utils/gemini.js";
@@ -409,6 +410,93 @@ export const searchQuestionsSemanticService = async (
       };
     })
     .filter(Boolean);
+};
+
+/**
+ * Update a question (author only)
+ */
+export const updateQuestionService = async ({ questionHash, userId, title, content }) => {
+  // Check ownership
+  const qRows = await safeExecute(
+    "SELECT question_id, user_id FROM questions WHERE question_hash = ?",
+    [questionHash]
+  );
+
+  if (qRows.length === 0) {
+    throw new NotFoundError("Question not found");
+  }
+
+  const question = qRows[0];
+  if (question.user_id !== userId) {
+    throw new ForbiddenError("You are not authorized to edit this question");
+  }
+
+  // Update question
+  const updateSql = `
+    UPDATE questions 
+    SET title = ?, content = ? 
+    WHERE question_id = ?
+  `;
+  await safeExecute(updateSql, [title, content, question.question_id]);
+
+  // Re-generate embedding
+  let embeddingValues = [];
+  let status = "ready";
+
+  try {
+    const result = await generateQuestionEmbedding(title);
+    embeddingValues = result.embedding;
+  } catch (error) {
+    status = "failed";
+  }
+
+  // Update vector
+  const updateVectorSql = `
+    UPDATE question_vectors
+    SET source_text = ?, embedding = ?, status = ?
+    WHERE question_id = ?
+  `;
+  await safeExecute(updateVectorSql, [
+    title,
+    JSON.stringify(embeddingValues),
+    status,
+    question.question_id,
+  ]);
+
+  return {
+    success: true,
+    message: "Question updated successfully.",
+  };
+};
+
+/**
+ * Delete a question (author only)
+ */
+export const deleteQuestionService = async ({ questionHash, userId }) => {
+  // Check ownership
+  const qRows = await safeExecute(
+    "SELECT question_id, user_id FROM questions WHERE question_hash = ?",
+    [questionHash]
+  );
+
+  if (qRows.length === 0) {
+    throw new NotFoundError("Question not found");
+  }
+
+  const question = qRows[0];
+  if (question.user_id !== userId) {
+    throw new ForbiddenError("You are not authorized to delete this question");
+  }
+
+  // Delete question (cascades to answers, vectors, bookmarks, votes)
+  await safeExecute("DELETE FROM questions WHERE question_id = ?", [
+    question.question_id,
+  ]);
+
+  return {
+    success: true,
+    message: "Question deleted successfully.",
+  };
 };
 
 /**

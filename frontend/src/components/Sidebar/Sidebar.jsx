@@ -1,5 +1,5 @@
 import { NavLink, useNavigate } from 'react-router-dom';
-import { LayoutDashboard, LogOut, MessageSquare, FileText, Moon, Sun } from 'lucide-react';
+import { LayoutDashboard, LogOut, MessageSquare, FileText, Moon, Sun, Bookmark } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useTheme } from '../../contexts/ThemeContext';
 import styles from './Sidebar.module.css';
@@ -10,6 +10,7 @@ import styles from './Sidebar.module.css';
  */
 const NAV_ITEMS = [
   { icon: LayoutDashboard, label: 'Home', path: '/dashboard' },
+  { icon: Bookmark, label: 'Bookmarks', path: '/my-bookmarks' },
   { icon: MessageSquare, label: 'Your Topics', path: '/my-questions' },
   { icon: FileText, label: 'Knowledge Base', path: '/rag-documents' },
 ];

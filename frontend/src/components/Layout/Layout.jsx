@@ -22,6 +22,7 @@ export default function Layout() {
     const path = location.pathname;
     if (path === '/dashboard') return 'Home';
     if (path === '/my-questions') return 'Your topics';
+    if (path === '/my-bookmarks') return 'Saved Questions';
     if (path === '/questions/ask') return 'Ask a question';
     if (path.startsWith('/questions/')) return 'Discussion';
     if (path === '/rag-documents') return 'Knowledge base';
@@ -36,6 +37,8 @@ export default function Layout() {
       return 'Browse the feed, search by keyword, or run AI similarity search.';
     if (path === '/my-questions')
       return 'Questions you have posted. Open any thread to read replies or edit context.';
+    if (path === '/my-bookmarks')
+      return 'Questions you have bookmarked for easy reference.';
     if (path === '/questions/ask')
       return 'A clear title and reproducible steps get faster, more accurate answers.';
     if (path.startsWith('/questions/'))

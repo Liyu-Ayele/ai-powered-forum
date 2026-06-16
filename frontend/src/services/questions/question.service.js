@@ -62,6 +62,35 @@ async function searchQuestionsSemantic(query) {
 }
 
 /**
+ * Update a question (author only)
+ * @param {string} questionHash 
+ * @param {object} data - { title, content }
+ */
+async function updateQuestion(questionHash, data) {
+  try {
+    const response = await apiClient.put(
+      `/api/questions/${questionHash}`,
+      data
+    );
+    return response.data;
+  } catch (error) {
+    throw handleQuestionError(error);
+  }
+}
+
+/**
+ * Delete a question (author only)
+ * @param {string} questionHash 
+ */
+async function deleteQuestion(questionHash) {
+  try {
+    const response = await apiClient.delete(
+      `/api/questions/${questionHash}`
+    );
+    return response.data;
+  } catch (error) {
+    throw handleQuestionError(error);
+/**
  * Get similar questions
  */
 async function getSimilarQuestions(questionHash) {
@@ -143,4 +172,6 @@ export const questionService = {
   getSimilarQuestions,
   createQuestion,
   generateQuestionDraftCoach,
+  updateQuestion,
+  deleteQuestion,
 };

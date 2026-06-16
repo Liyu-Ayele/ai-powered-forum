@@ -29,8 +29,9 @@ import Landing from "./pages/Landing/Landing";
 import PostQuestion from "./pages/PostQuestion/PostQuestion";
 import MyQuestions from "./pages/MyQuestions/MyQuestions";
 import Profile from "./pages/Profile/Profile";
-
 import RagDocuments from './pages/RagDocuments/RagDocuments';
+import MyBookmarks from './pages/MyBookmarks/MyBookmarks';
+
 function App() {
   return (
     <BrowserRouter>
@@ -83,6 +84,15 @@ function App() {
               element={
                 <ProtectedRoute>
                   <RagDocuments />
+                </ProtectedRoute>
+              }
+            />
+
+            <Route
+              path="/my-bookmarks"
+              element={
+                <ProtectedRoute>
+                  <MyBookmarks />
                 </ProtectedRoute>
               }
             />
