@@ -21,6 +21,16 @@ import { validationErrorHandler } from "../../../middleware/validation-handler.j
 
 const router = express.Router();
 
+import { generateQuestionDraftCoachController } from "../controller/question.controller.js";
+import { generateQuestionDraftCoachValidation } from "../validations/question.validation.js";
+
+router.post(
+  '/draft-coach',
+  authenticateUser,
+  generateQuestionDraftCoachValidation,
+  generateQuestionDraftCoachController,
+);
+
 /**
  * @route get /api/questions/search
  * @desc Semantic search for similar questions based on text input

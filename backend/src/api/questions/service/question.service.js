@@ -135,7 +135,8 @@ export const getQuestionsService = async ({
       u.user_id AS authorId,
       u.first_name AS firstName,
       u.last_name AS lastName,
-      COUNT(DISTINCT a.answer_id) AS answerCount
+      COUNT(DISTINCT a.answer_id) AS answerCount,
+      COALESCE((SELECT SUM(vote) FROM votes WHERE target_type = 'question' AND target_id = q.question_id), 0) AS likes
     FROM questions q
     JOIN users u ON q.user_id = u.user_id
     LEFT JOIN answers a ON q.question_id = a.question_id
@@ -183,6 +184,8 @@ export const getQuestionsService = async ({
     title: row.title,
     content: row.content,
     answerCount: row.answerCount,
+    likes: parseInt(row.likes, 10) || 0,
+    score: row.score, // This might be undefined unless it's from semantic search
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
     author: {
@@ -210,6 +213,7 @@ export const getQuestionsService = async ({
  */
 export const getSingleQuestionService = async ({
   questionHash,
+  userId,
 }) => {
   const questionSql = `
     SELECT 
@@ -221,13 +225,15 @@ export const getSingleQuestionService = async ({
       q.updated_at AS updatedAt,
       u.user_id AS authorId,
       u.first_name AS firstName,
-      u.last_name AS lastName
+      u.last_name AS lastName,
+      COALESCE((SELECT SUM(vote) FROM votes WHERE target_type = 'question' AND target_id = q.question_id), 0) AS likes,
+      (SELECT vote FROM votes WHERE target_type = 'question' AND target_id = q.question_id AND user_id = ?) AS userVote
     FROM questions q
     JOIN users u ON q.user_id = u.user_id
     WHERE q.question_hash = ?
   `;
 
-  const questions = await safeExecute(questionSql, [questionHash]);
+  const questions = await safeExecute(questionSql, [userId || 0, questionHash]);
 
   if (questions.length === 0) {
     throw new NotFoundError("Question not found");
@@ -243,20 +249,24 @@ export const getSingleQuestionService = async ({
       a.updated_at AS updatedAt,
       u.user_id AS authorId,
       u.first_name AS firstName,
-      u.last_name AS lastName
+      u.last_name AS lastName,
+      COALESCE((SELECT SUM(vote) FROM votes WHERE target_type = 'answer' AND target_id = a.answer_id), 0) AS likes,
+      (SELECT vote FROM votes WHERE target_type = 'answer' AND target_id = a.answer_id AND user_id = ?) AS userVote
     FROM answers a
     JOIN users u ON a.user_id = u.user_id
     WHERE a.question_id = ?
-    ORDER BY a.created_at ASC
+    ORDER BY likes DESC, a.created_at ASC
   `;
 
-  const answerRows = await safeExecute(answersSql, [question.id]);
+  const answerRows = await safeExecute(answersSql, [userId || 0, question.id]);
 
   const answers = answerRows.map((row) => ({
     id: row.id,
     content: row.content,
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
+    likes: parseInt(row.likes, 10) || 0,
+    userVote: row.userVote || 0,
     author: {
       id: row.authorId,
       firstName: row.firstName,
@@ -275,6 +285,8 @@ export const getSingleQuestionService = async ({
       answerCount: answers.length,
       createdAt: question.createdAt,
       updatedAt: question.updatedAt,
+      likes: parseInt(question.likes, 10) || 0,
+      userVote: question.userVote || 0,
       author: {
         id: question.authorId,
         firstName: question.firstName,

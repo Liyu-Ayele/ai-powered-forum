@@ -81,9 +81,11 @@ export const getQuestionsController = async (req, res, next) => {
 export const getSingleQuestionController = async (req, res, next) => {
   try {
     const { questionHash } = req.params;
+    const userId = req.user?.id;
 
     const result = await getSingleQuestionService({
       questionHash,
+      userId,
     });
 
     res.status(StatusCodes.OK).json(result);
@@ -111,6 +113,25 @@ export const getSimilarQuestionsController = async (req, res, next) => {
         query: null,
         questionHash
       }
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+import { generateQuestionDraftCoachService } from "../service/geminiTextCoach.service.js";
+
+export const generateQuestionDraftCoachController = async (req, res, next) => {
+  try {
+    const { title, content } = req.body;
+    
+    const result = await generateQuestionDraftCoachService(title, content);
+
+    res.status(StatusCodes.OK).json({
+      success: true,
+      feedback: result.feedback,
+      tips: result.tips,
+      improvedDraft: result.improvedDraft,
     });
   } catch (error) {
     next(error);

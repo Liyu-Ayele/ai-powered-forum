@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { questionService } from '../../services/questions/question.service.js';
+import ReactMarkdown from 'react-markdown';
 import styles from './PostQuestion.module.css';
 import { Sparkles, Send, Bold, Italic, Code, Link as LinkIcon, Check } from 'lucide-react';
 
@@ -13,6 +14,31 @@ export default function PostQuestion() {
   const [error, setError] = useState(null);
   const [successData, setSuccessData] = useState(null);
   const [validationErrors, setValidationErrors] = useState({});
+  const [similarQuestions, setSimilarQuestions] = useState([]);
+  const [isSearchingSimilar, setIsSearchingSimilar] = useState(false);
+
+  useEffect(() => {
+    const title = formData.title.trim();
+    if (title.length < 5) {
+      setSimilarQuestions([]);
+      return;
+    }
+
+    const delayDebounceFn = setTimeout(async () => {
+      setIsSearchingSimilar(true);
+      try {
+        const result = await questionService.searchQuestionsSemantic(title);
+        const questionsArray = result.data || result;
+        setSimilarQuestions(Array.isArray(questionsArray) ? questionsArray : []);
+      } catch (err) {
+        console.error('Failed to fetch similar questions', err);
+      } finally {
+        setIsSearchingSimilar(false);
+      }
+    }, 500);
+
+    return () => clearTimeout(delayDebounceFn);
+  }, [formData.title]);
 
   const validate = () => {
     const errors = {};
@@ -44,7 +70,7 @@ export default function PostQuestion() {
     setError(null);
     try {
       const response = await questionService.generateQuestionDraftCoach(formData);
-      setCoachFeedback(response.tips || response.feedback || []);
+      setCoachFeedback(response);
     } catch (err) {
       setError(err.message || 'Failed to get AI feedback. Please try again.');
     } finally {
@@ -168,6 +194,31 @@ export default function PostQuestion() {
             {validationErrors.title && (
               <span className={styles.errorText}>{validationErrors.title}</span>
             )}
+            
+            {/* Similar Questions Panel */}
+            {(similarQuestions.length > 0 || isSearchingSimilar) && (
+              <div className={styles.similarQuestionsPanel}>
+                <h4 className={styles.similarQuestionsHeader}>
+                  {isSearchingSimilar ? 'Checking for similar questions...' : 'Similar questions already asked:'}
+                </h4>
+                {!isSearchingSimilar && similarQuestions.length > 0 && (
+                  <ul className={styles.similarQuestionsList}>
+                    {similarQuestions.map(sq => (
+                      <li key={sq.questionHash || sq.id}>
+                        <a 
+                          href={`/questions/${sq.questionHash || sq.id}`} 
+                          target="_blank" 
+                          rel="noopener noreferrer"
+                          className={styles.similarQuestionLink}
+                        >
+                          {sq.title}
+                        </a>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            )}
           </div>
 
           <div className={styles.formGroup}>
@@ -218,13 +269,32 @@ export default function PostQuestion() {
               <div className={styles.aiFeedbackTitle}>
                 <Sparkles size={16} /> AI Draft Coach Feedback
               </div>
-              <ul className={styles.aiFeedbackList}>
-                {Array.isArray(coachFeedback) ? (
-                  coachFeedback.map((tip, idx) => <li key={idx}>{tip}</li>)
-                ) : (
-                  <li>{coachFeedback}</li>
-                )}
-              </ul>
+              <div className={styles.aiFeedbackContent}>
+                <ReactMarkdown>{coachFeedback.feedback || ''}</ReactMarkdown>
+              </div>
+              {coachFeedback.tips && coachFeedback.tips.length > 0 && (
+                <ul className={styles.aiFeedbackList}>
+                  {coachFeedback.tips.map((tip, idx) => <li key={idx}>{tip}</li>)}
+                </ul>
+              )}
+              {coachFeedback.improvedDraft && (
+                <div className={styles.aiImprovedDraftContainer}>
+                  <h4 className={styles.aiImprovedDraftTitle}>Suggested Draft</h4>
+                  <div className={styles.aiImprovedDraft}>
+                    <ReactMarkdown>{coachFeedback.improvedDraft}</ReactMarkdown>
+                  </div>
+                  <button
+                    type="button"
+                    className={styles.replaceDraftBtn}
+                    onClick={() => {
+                      setFormData(prev => ({ ...prev, content: coachFeedback.improvedDraft }));
+                      setCoachFeedback(null);
+                    }}
+                  >
+                    Replace my draft
+                  </button>
+                </div>
+              )}
             </div>
           )}
 

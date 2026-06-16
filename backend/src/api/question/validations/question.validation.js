@@ -18,3 +18,18 @@ export const createQuestionValidation = [
     .withMessage(" question Content must be at least 10 characters long"),
   validationErrorHandler,
 ];
+
+export const generateQuestionDraftCoachValidation = [
+  body("title")
+    .optional()
+    .isString()
+    .withMessage("Title must be a string"),
+  body("content")
+    .notEmpty()
+    .withMessage("Content is required")
+    .isString()
+    .withMessage("Content must be a string")
+    .isLength({ min: 10 })
+    .withMessage("Content must be at least 10 characters long"),
+  validationErrorHandler,
+];

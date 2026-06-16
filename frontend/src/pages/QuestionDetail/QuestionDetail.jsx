@@ -1,10 +1,11 @@
 import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import ReactMarkdown from 'react-markdown';
-import { Bold, Italic, Code, Link2, MessageSquare } from 'lucide-react';
+import { Bold, Italic, Code, Link2, MessageSquare, ThumbsUp } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { questionService } from '../../services/questions/question.service.js';
 import { answerService } from '../../services/answers/answer.service.js';
+import { voteService } from '../../services/votes/vote.service.js';
 import { timeAgo, isAuthoredByUser } from '../../lib/utils.js';
 import ui from '../../styles/pageStates.module.css';
 import styles from './QuestionDetail.module.css';
@@ -98,6 +99,64 @@ export default function QuestionDetail() {
       setFitError(err.message || 'Failed to check answer fit.');
     } finally {
       setIsCheckingFit(false);
+    }
+  };
+
+  const handleVote = async (targetType, targetId, currentVote, voteValue) => {
+    if (!user) {
+      setError('You must be logged in to vote.');
+      return;
+    }
+
+    const isRemoving = currentVote === voteValue;
+    const newVoteValue = isRemoving ? 0 : voteValue;
+    const voteDiff = newVoteValue - (currentVote || 0);
+
+    if (targetType === 'question') {
+      setQuestion(prev => ({
+        ...prev,
+        likes: prev.likes + voteDiff,
+        userVote: newVoteValue,
+      }));
+    } else {
+      setAnswers(prev => prev.map(ans => {
+        if (ans.id === targetId) {
+          return {
+            ...ans,
+            likes: ans.likes + voteDiff,
+            userVote: newVoteValue,
+          };
+        }
+        return ans;
+      }));
+    }
+
+    try {
+      if (isRemoving) {
+        await voteService.removeVote(targetType, targetId);
+      } else {
+        await voteService.castVote(targetType, targetId, voteValue);
+      }
+    } catch (err) {
+      if (targetType === 'question') {
+        setQuestion(prev => ({
+          ...prev,
+          likes: prev.likes - voteDiff,
+          userVote: currentVote,
+        }));
+      } else {
+        setAnswers(prev => prev.map(ans => {
+          if (ans.id === targetId) {
+            return {
+              ...ans,
+              likes: ans.likes - voteDiff,
+              userVote: currentVote,
+            };
+          }
+          return ans;
+        }));
+      }
+      setError(err.message || 'Failed to register vote.');
     }
   };
 
@@ -213,30 +272,38 @@ export default function QuestionDetail() {
               </div>
             </div>
 
-            <h2 className={styles.threadTitle}>{question.title}</h2>
+                <h2 className={styles.threadTitle}>{question.title}</h2>
 
-            <div className={styles.postContent}>
-              <ReactMarkdown>{question.content}</ReactMarkdown>
-            </div>
+                <div className={styles.postContent}>
+                  <ReactMarkdown>{question.content}</ReactMarkdown>
+                </div>
 
-            <div className={styles.threadActions}>
-              <button type='button' className={styles.btnAction}>
-                <svg width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2'>
-                  <circle cx='18' cy='5' r='3' />
-                  <circle cx='6' cy='12' r='3' />
-                  <circle cx='18' cy='19' r='3' />
-                  <line x1='8.59' y1='13.51' x2='15.42' y2='17.49' />
-                  <line x1='15.41' y1='6.51' x2='8.59' y2='10.49' />
-                </svg>
-                Share
-              </button>
-              <button type='button' className={styles.btnAction}>
-                <svg width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2'>
-                  <path d='M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z' />
-                </svg>
-                {answers.length} {answers.length === 1 ? 'Answer' : 'Answers'}
-              </button>
-            </div>
+                <div className={styles.threadActions}>
+                  <button type='button' className={styles.btnAction}>
+                    <svg width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2'>
+                      <circle cx='18' cy='5' r='3' />
+                      <circle cx='6' cy='12' r='3' />
+                      <circle cx='18' cy='19' r='3' />
+                      <line x1='8.59' y1='13.51' x2='15.42' y2='17.49' />
+                      <line x1='15.41' y1='6.51' x2='8.59' y2='10.49' />
+                    </svg>
+                    Share
+                  </button>
+                  <button 
+                    className={`${styles.voteBtn} ${question.userVote === 1 ? styles.voteActive : ''}`}
+                    onClick={() => handleVote('question', question.id, question.userVote, 1)}
+                    title={question.userVote === 1 ? "Unlike this question" : "Like this question"}
+                  >
+                    <ThumbsUp size={16} />
+                    <span className={styles.voteScore}>{question.likes || 0}</span>
+                  </button>
+                  <button type='button' className={styles.btnAction}>
+                    <svg width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2'>
+                      <path d='M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z' />
+                    </svg>
+                    {answers.length} {answers.length === 1 ? 'Answer' : 'Answers'}
+                  </button>
+                </div>
           </article>
 
           <section className={styles.answersContainer}>
@@ -279,6 +346,16 @@ export default function QuestionDetail() {
                   </div>
                   <div className={styles.answerContent}>
                     <ReactMarkdown>{answer.content}</ReactMarkdown>
+                  </div>
+                  <div className={styles.threadActions} style={{ marginTop: '16px', paddingTop: '16px' }}>
+                    <button 
+                      className={`${styles.voteBtn} ${answer.userVote === 1 ? styles.voteActive : ''}`}
+                      onClick={() => handleVote('answer', answer.id, answer.userVote, 1)}
+                      title={answer.userVote === 1 ? "Unlike this answer" : "Like this answer"}
+                    >
+                      <ThumbsUp size={16} />
+                      <span className={styles.voteScore}>{answer.likes || 0}</span>
+                    </button>
                   </div>
                 </article>
               );

@@ -13,6 +13,7 @@ import {
   ChevronRight,
   AlertCircle,
   HelpCircle,
+  ThumbsUp,
 } from 'lucide-react';
 export default function Dashboard() {
   const [questions, setQuestions] = useState([]);
@@ -242,6 +243,10 @@ export default function Dashboard() {
                         {question.answerCount ?? 0}{' '}
                         {(question.answerCount ?? 0) === 1 ? 'answer' : 'answers'}
                       </span>
+                    </span>
+                    <span className={styles.metaItem}>
+                      <ThumbsUp size={14} />
+                      <span>{question.likes ?? 0}</span>
                     </span>
                     {question.score !== undefined && (
                       <span className={`${styles.metaItem} ${styles.scoreBadge}`}>

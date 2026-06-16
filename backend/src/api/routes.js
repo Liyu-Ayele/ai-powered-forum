@@ -4,6 +4,7 @@ import authRoutes from "./auth/routes/auth.routes.js";
 import questionRoutes from "./questions/routes/question.routes.js";
 import answerRoutes from "./answer/routes/answer.route.js";
 import ragRoutes from "./rag/routes/rag.routes.js";
+import voteRoutes from "./votes/routes/vote.routes.js";
 
 export const mainRouter = express.Router();
 
@@ -26,3 +27,8 @@ mainRouter.use("/answers", answerRoutes);
  * RAG Documents Routes
  */
 mainRouter.use("/rag/documents", ragRoutes);
+
+/**
+ * Votes Routes
+ */
+mainRouter.use("/votes", voteRoutes);
