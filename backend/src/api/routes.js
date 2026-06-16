@@ -26,3 +26,4 @@ mainRouter.use("/answers", answerRoutes);
  * RAG Documents Routes
  */
 mainRouter.use("/rag/documents", ragRoutes);
+mainRouter.use("/rag", ragRoutes);
