@@ -42,7 +42,29 @@ function handleAnswerError(error) {
   return new Error(backendMessage || 'An unexpected error occurred.');
 }
 
+async function updateAnswer(answerId, content) {
+  try {
+    const response = await apiClient.put(`/api/answers/${answerId}`, {
+      content,
+    });
+    return response.data;
+  } catch (error) {
+    throw handleAnswerError(error);
+  }
+}
+
+async function deleteAnswer(answerId) {
+  try {
+    const response = await apiClient.delete(`/api/answers/${answerId}`);
+    return response.data;
+  } catch (error) {
+    throw handleAnswerError(error);
+  }
+}
+
 export const answerService = {
   assessAnswerFit,
   postAnswer,
+  updateAnswer,
+  deleteAnswer,
 };

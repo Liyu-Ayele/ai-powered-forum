@@ -1,8 +1,35 @@
 import { safeExecute } from "../../../../db/config.js";
-import { BadRequestError, NotFoundError } from "../../../utils/errors/index.js";
+import { ForbiddenError, NotFoundError } from "../../../utils/errors/index.js";
+
+const fetchSql = `
+  SELECT
+    a.answer_id AS id,
+    a.question_id AS questionId,
+    a.content,
+    a.created_at AS createdAt,
+    a.updated_at AS updatedAt,
+    u.user_id AS authorId,
+    u.first_name AS firstName,
+    u.last_name AS lastName
+  FROM answers a
+  JOIN users u ON a.user_id = u.user_id
+  WHERE a.answer_id = ?
+`;
+
+const formatAnswer = (row) => ({
+  id: row.id,
+  questionId: row.questionId,
+  content: row.content,
+  createdAt: row.createdAt,
+  updatedAt: row.updatedAt,
+  author: {
+    id: row.authorId,
+    firstName: row.firstName,
+    lastName: row.lastName,
+  },
+});
 
 export const createAnswerService = async ({ questionId, content, userId }) => {
-  // 1. Check question exists
   const questionSql =
     "SELECT question_id, user_id FROM questions WHERE question_id = ?";
 
@@ -12,49 +39,57 @@ export const createAnswerService = async ({ questionId, content, userId }) => {
     throw new NotFoundError("Question not found");
   }
 
-  const question = questions[0];
-
-  // 2. Prevent answering own question
-  if (question.user_id === userId) {
-    throw new BadRequestError("You cannot answer your own question");
+  if (questions[0].user_id === userId) {
+    throw new ForbiddenError("You cannot answer your own question");
   }
 
-  // 3. Insert answer
   const insertSql =
     "INSERT INTO answers (question_id, user_id, content) VALUES (?, ?, ?)";
 
   const result = await safeExecute(insertSql, [questionId, userId, content]);
 
-  // 4. Fetch inserted answer
-  const fetchSql = `
-    SELECT 
-      a.answer_id AS id,
-      a.question_id AS questionId,
-      a.content,
-      a.created_at AS createdAt,
-      a.updated_at AS updatedAt,
-      u.user_id AS authorId,
-      u.first_name AS firstName,
-      u.last_name AS lastName
-    FROM answers a
-    JOIN users u ON a.user_id = u.user_id
-    WHERE a.answer_id = ?
-  `;
-
   const rows = await safeExecute(fetchSql, [result.insertId]);
 
-  const answer = rows[0];
+  return formatAnswer(rows[0]);
+};
 
-  return {
-    id: answer.id,
-    questionId: answer.questionId,
-    content: answer.content,
-    createdAt: answer.createdAt,
-    updatedAt: answer.updatedAt,
-    author: {
-      id: answer.authorId,
-      firstName: answer.firstName,
-      lastName: answer.lastName,
-    },
-  };
+export const updateAnswerService = async ({ answerId, content, userId }) => {
+  const existing = await safeExecute(
+    "SELECT answer_id, user_id FROM answers WHERE answer_id = ?",
+    [answerId],
+  );
+
+  if (existing.length === 0) {
+    throw new NotFoundError("Answer not found");
+  }
+
+  if (existing[0].user_id !== userId) {
+    throw new ForbiddenError("You can only edit your own answers");
+  }
+
+  await safeExecute("UPDATE answers SET content = ? WHERE answer_id = ?", [
+    content,
+    answerId,
+  ]);
+
+  const rows = await safeExecute(fetchSql, [answerId]);
+
+  return formatAnswer(rows[0]);
+};
+
+export const deleteAnswerService = async ({ answerId, userId }) => {
+  const existing = await safeExecute(
+    "SELECT answer_id, user_id FROM answers WHERE answer_id = ?",
+    [answerId],
+  );
+
+  if (existing.length === 0) {
+    throw new NotFoundError("Answer not found");
+  }
+
+  if (existing[0].user_id !== userId) {
+    throw new ForbiddenError("You can only delete your own answers");
+  }
+
+  await safeExecute("DELETE FROM answers WHERE answer_id = ?", [answerId]);
 };
