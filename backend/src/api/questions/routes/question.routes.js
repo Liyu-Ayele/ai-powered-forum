@@ -25,8 +25,8 @@ import {
 
 import { authenticateUser } from "../../../middleware/authentication.js";
 import { validationErrorHandler } from "../../../middleware/validation-handler.js";
+import { sanitizeInput } from "../../../middleware/sanitizer.js";
 import { aiLimiter } from "../../../middleware/rateLimiter.js";
-
 const router = express.Router();
 
 /**
@@ -76,6 +76,7 @@ router.post(
 router.post(
   "/",
   authenticateUser,
+  sanitizeInput,
   createQuestionValidation,
   createQuestionController,
 );
@@ -127,6 +128,7 @@ router.get(
 router.put(
   "/:questionHash",
   authenticateUser,
+  sanitizeInput,
   updateQuestionValidation,
   updateQuestionController
 );
