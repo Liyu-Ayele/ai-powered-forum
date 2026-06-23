@@ -138,6 +138,7 @@ export const getQuestionsService = async ({
       u.user_id AS authorId,
       u.first_name AS firstName,
       u.last_name AS lastName,
+      u.avatar_url AS avatarUrl,
       COUNT(DISTINCT a.answer_id) AS answerCount,
       COALESCE((SELECT SUM(vote) FROM votes WHERE target_type = 'question' AND target_id = q.question_id), 0) AS likes
     FROM questions q
@@ -176,7 +177,8 @@ export const getQuestionsService = async ({
       q.updated_at,
       u.user_id,
       u.first_name,
-      u.last_name
+      u.last_name,
+      u.avatar_url
     ORDER BY q.created_at DESC
     LIMIT ${limit} OFFSET ${offset}
   `;
@@ -197,6 +199,7 @@ export const getQuestionsService = async ({
       id: row.authorId,
       firstName: row.firstName,
       lastName: row.lastName,
+      avatarUrl: row.avatarUrl,
     },
   }));
 
@@ -233,6 +236,7 @@ export const getSingleQuestionService = async ({
       u.user_id AS authorId,
       u.first_name AS firstName,
       u.last_name AS lastName,
+      u.avatar_url AS avatarUrl,
       COALESCE((SELECT SUM(vote) FROM votes WHERE target_type = 'question' AND target_id = q.question_id), 0) AS likes,
       (SELECT vote FROM votes WHERE target_type = 'question' AND target_id = q.question_id AND user_id = ?) AS userVote
     FROM questions q
@@ -257,6 +261,7 @@ export const getSingleQuestionService = async ({
       u.user_id AS authorId,
       u.first_name AS firstName,
       u.last_name AS lastName,
+      u.avatar_url AS avatarUrl,
       COALESCE((SELECT SUM(vote) FROM votes WHERE target_type = 'answer' AND target_id = a.answer_id), 0) AS likes,
       (SELECT vote FROM votes WHERE target_type = 'answer' AND target_id = a.answer_id AND user_id = ?) AS userVote
     FROM answers a
@@ -278,6 +283,7 @@ export const getSingleQuestionService = async ({
       id: row.authorId,
       firstName: row.firstName,
       lastName: row.lastName,
+      avatarUrl: row.avatarUrl,
     },
   }));
 
@@ -298,6 +304,7 @@ export const getSingleQuestionService = async ({
         id: question.authorId,
         firstName: question.firstName,
         lastName: question.lastName,
+        avatarUrl: question.avatarUrl,
       },
     },
     answers,
@@ -368,6 +375,7 @@ export const searchQuestionsSemanticService = async (
       u.user_id,
       u.first_name AS firstName,
       u.last_name AS lastName,
+      u.avatar_url AS avatarUrl,
       (
         SELECT COUNT(*)
         FROM answers a
@@ -405,6 +413,7 @@ export const searchQuestionsSemanticService = async (
           id: detail.user_id,
           firstName: detail.firstName,
           lastName: detail.lastName,
+          avatarUrl: detail.avatarUrl,
         },
         score: scoredItem.score,
       };
@@ -590,6 +599,7 @@ export const getSimilarQuestionsService = async (
       u.user_id,
       u.first_name AS firstName,
       u.last_name AS lastName,
+      u.avatar_url AS avatarUrl,
       (
         SELECT COUNT(*)
         FROM answers a
@@ -627,6 +637,7 @@ export const getSimilarQuestionsService = async (
           id: detail.user_id,
           firstName: detail.firstName,
           lastName: detail.lastName,
+          avatarUrl: detail.avatarUrl,
         },
         score: scoredItem.score,
       };

@@ -220,6 +220,12 @@ select:focus {
     box-shadow var(--transition-fast);
 }
 
+/* The navbar search input is borderless — its parent container owns the focus ring */
+input.navbarSearchInput:focus {
+  border-color: transparent !important;
+  box-shadow: none !important;
+}
+
 /* Base Typography */
 h1,
 h2,

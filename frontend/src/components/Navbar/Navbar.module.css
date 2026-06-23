@@ -1,6 +1,11 @@
-/* ========================================
-   PROFESSIONAL NAVBAR
-======================================== */
+/* =====================================================
+   NAVBAR — fluid / dynamic responsive
+   Strategy:
+   - Fluid spacing via clamp() — no sudden jumps
+   - flex proportions shrink/grow naturally
+   - Only two hard breakpoints where layout must
+     structurally change (title hide, second row)
+===================================================== */
 
 .navbar {
   position: sticky;
@@ -9,349 +14,393 @@
 
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 1.25rem;
+  flex-wrap: wrap;
 
-  min-height: 4.25rem;
+  /* fluid gap: 0.4rem at 320px → 0.75rem at 1200px */
+  gap: clamp(0.4rem, 1.2vw, 0.75rem);
 
-  padding-inline: 1.25rem;
+  /* fluid padding: 0.5rem at 320px → 1.25rem at 1400px */
+  padding: clamp(0.5rem, 1.2vh, 0.85rem) clamp(0.75rem, 2vw, 1.5rem);
 
   background: var(--surface);
-
   border-bottom: 1px solid var(--border);
-
   box-shadow: var(--shadow-sm);
 }
 
-/* ========================================
-   MOBILE MENU
-======================================== */
-
+/* =====================================================
+   HAMBURGER
+   Hidden on wide screens, fades in as viewport shrinks
+===================================================== */
 .menuToggle {
   display: none;
-
   align-items: center;
   justify-content: center;
+  flex-shrink: 0;
 
-  width: 2.4rem;
-  height: 2.4rem;
+  /* fluid size */
+  width:  clamp(2rem, 5vw, 2.4rem);
+  height: clamp(2rem, 5vw, 2.4rem);
 
   border: none;
-  border-radius: 0.8rem;
-
+  border-radius: 0.65rem;
   background: transparent;
-
   cursor: pointer;
-
   color: var(--text-primary);
-
-  transition:
-    background 0.25s ease,
-    transform 0.2s ease;
+  transition: background 0.2s ease, transform 0.15s ease;
 }
-
-.menuToggle:hover {
-  background: var(--surface-container-low);
-}
-
-.menuToggle:active {
-  transform: scale(0.96);
-}
+.menuToggle:hover  { background: var(--surface-container-low); }
+.menuToggle:active { transform: scale(0.93); }
 
 @media (max-width: 768px) {
-  .menuToggle {
-    display: flex;
-  }
+  .menuToggle { display: flex; }
 }
 
-/* ========================================
-   TITLE
-======================================== */
-
+/* =====================================================
+   PAGE TITLE
+   Shrinks fluidly, disappears below 768px
+===================================================== */
 .navbar__titleBlock {
-  flex-shrink: 1;
-  min-width: 0;
-  max-width: min(30rem, 42vw);
+  flex-shrink: 0;
+  /* never grow past what the title needs */
+  max-width: clamp(4rem, 15vw, 12rem);
+  overflow: hidden;
 }
 
 .navbar__pageTitle {
   margin: 0;
-
-  font-size: var(--text-lg);
+  /* fluid font: 0.9rem at narrow → 1.1rem at wide */
+  font-size: clamp(0.9rem, 1.5vw, 1.1rem);
   font-weight: var(--font-semibold);
-
   line-height: 1.2;
-
   color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-.navbar__pageSubtitle {
-  margin-top: 0.15rem;
-
-  font-size: var(--text-xs);
-
-  color: var(--text-tertiary);
-
-  display: none;
+@media (max-width: 768px) {
+  .navbar__titleBlock { display: none; }
 }
 
-@media (min-width: 900px) {
-  .navbar__pageSubtitle {
-    display: block;
+/* =====================================================
+   SEARCH WRAPPER
+   Takes all remaining space; wraps to own row on mobile
+===================================================== */
+.navbar__searchWrapper {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  /* fluid row-gap */
+  gap: clamp(0.2rem, 0.6vw, 0.35rem);
+}
+
+/* ≤540px: drop wrapper to its own second row */
+@media (max-width: 540px) {
+  .navbar__searchWrapper {
+    order: 2;
+    flex-basis: 100%;
+    flex: none;
+    width: 100%;
   }
 }
 
-/* ========================================
-   SEARCH
-======================================== */
+/* ── form row ── */
+.navbar__searchForm {
+  display: flex;
+  align-items: center;
+  /* fluid gap between bar and submit button */
+  gap: clamp(0.35rem, 1vw, 0.6rem);
+}
 
-.navbar__search {
-  position: relative;
-
+/* ── search bar container ── */
+.navbar__searchBar {
+  display: flex;
+  align-items: center;
   flex: 1;
+  min-width: 0;
+  gap: clamp(0.3rem, 0.8vw, 0.5rem);
 
-  max-width: 36rem;
+  /* fluid height: 2.1rem at 320px → 2.5rem at 1400px */
+  height: clamp(2.1rem, 4.5vw, 2.5rem);
+
+  /* fluid horizontal padding */
+  padding-inline: clamp(0.5rem, 1.2vw, 0.85rem);
+
+  background: var(--surface-container-low);
+  border: 1.5px solid var(--border);
+  border-radius: clamp(0.5rem, 1.5vw, 0.85rem);
+
+  transition:
+    border-color 0.18s ease,
+    background   0.18s ease,
+    box-shadow   0.18s ease;
+}
+
+.navbar__searchBar--focused {
+  background: var(--surface);
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+}
+
+.navbar__searchBar--semantic {
+  border-color: color-mix(in srgb, #8b5cf6 30%, var(--border));
+}
+
+.navbar__searchBar--semantic.navbar__searchBar--focused {
+  border-color: #8b5cf6;
+  box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.12);
+}
+
+/* ── icons ── */
+.navbar__searchLeadIcon {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
 }
 
 .navbar__searchIcon {
-  position: absolute;
-
-  top: 50%;
-  left: 0.9rem;
-
-  transform: translateY(-50%);
-
-  display: flex;
-  align-items: center;
-
-  color: var(--text-secondary);
-
-  pointer-events: none;
+  /* fluid icon size */
+  color: var(--text-tertiary);
+  transition: color 0.15s ease;
+  /* size handled by the JSX size prop, but we can nudge opacity */
 }
 
+.navbar__searchBar--focused .navbar__searchIcon {
+  color: var(--primary);
+}
+
+.navbar__sparkle {
+  color: #8b5cf6;
+  animation: sparkle-pulse 2.4s ease-in-out infinite;
+}
+
+/* ── input ── */
 .navbar__searchInput {
-  width: 100%;
-
-  padding: 0.78rem 6.8rem 0.78rem 2.7rem;
-
-  border-radius: 1rem;
-
-  border: 1px solid var(--border);
-
-  background: var(--surface-container-low);
-
+  flex: 1;
+  min-width: 0;
+  border: none;
+  background: transparent;
+  /* fluid font size */
+  font-size: clamp(0.75rem, 1.5vw, 0.875rem);
   color: var(--text-primary);
+  outline: none;
+  box-shadow: none;
+  -webkit-appearance: none;
+  appearance: none;
+  padding: 0;
+  line-height: 1;
+}
 
-  font-size: var(--text-sm);
-
-  transition:
-    border-color 0.25s ease,
-    background 0.25s ease,
-    box-shadow 0.25s ease;
+.navbar__searchInput:focus,
+.navbar__searchInput:focus-visible {
+  outline: none;
+  box-shadow: none;
+  border: none;
 }
 
 .navbar__searchInput::placeholder {
   color: var(--text-tertiary);
 }
 
-.navbar__searchInput:focus {
-  outline: none;
-
-  background: var(--surface);
-
-  border-color: var(--primary);
-
-  box-shadow:
-    0 0 0 4px rgba(99, 102, 241, 0.08),
-    0 2px 12px rgba(99, 102, 241, 0.08);
-}
-
-/* ========================================
-   AI SEARCH BUTTON
-======================================== */
-
-.navbar__semanticButton {
-  position: absolute;
-
-  right: 0.32rem;
-  top: 50%;
-
-  transform: translateY(-50%);
-
-  display: flex;
-  align-items: center;
-  gap: 0.35rem;
-
-  padding: 0.42rem 0.78rem;
-
-  border: none;
-  border-radius: 0.8rem;
-
-  background: linear-gradient(
-    135deg,
-    #6366f1,
-    #8b5cf6
-  );
-
-  color: white;
-
-  font-size: 0.74rem;
-  font-weight: 600;
-
-  cursor: pointer;
-
-  transition:
-    transform 0.25s ease,
-    opacity 0.25s ease,
-    box-shadow 0.25s ease;
-}
-
-.navbar__semanticButton:hover {
-  transform: translateY(-50%) scale(1.03);
-
-  box-shadow:
-    0 4px 14px rgba(99, 102, 241, 0.3);
-}
-
-.navbar__semanticText {
-  display: none;
-}
-
-@media (min-width: 640px) {
-  .navbar__semanticText {
-    display: inline;
-  }
-}
-
-/* ========================================
-   ACTIONS
-======================================== */
-
-.navbar__actions {
-  display: flex;
-  align-items: center;
-  gap: 0.9rem;
-}
-
-/* ========================================
-   USER
-======================================== */
-
-.navbar__user {
-  display: flex;
-  align-items: center;
-
-  padding-left: 1rem;
-
-  border-left: 1px solid var(--border);
-}
-
-.navbar__userLink {
-  display: flex;
-  align-items: center;
-  gap: 0.72rem;
-
-  text-decoration: none;
-}
-
-.navbar__userName {
-  display: none;
-
-  color: var(--text-primary);
-
-  font-size: var(--text-sm);
-  font-weight: 500;
-}
-
-@media (min-width: 1024px) {
-  .navbar__userName {
-    display: block;
-  }
-}
-
-.navbar__userAvatar {
-  width: 2.15rem;
-  height: 2.15rem;
-
-  overflow: hidden;
-
-  border-radius: 50%;
-
-  border: 1px solid var(--border);
-
-  background: var(--surface-container-high);
-
-  transition:
-    transform 0.25s ease,
-    border-color 0.25s ease;
-}
-
-.navbar__userLink:hover .navbar__userAvatar {
-  transform: scale(1.04);
-
-  border-color: var(--primary);
-}
-
-.navbar__userAvatar img {
-  width: 100%;
-  height: 100%;
-
-  object-fit: cover;
-}
-
-/* ========================================
-   LOGOUT
-======================================== */
-
-.navbar__logout {
+/* ── clear button ── */
+.navbar__clearBtn {
   display: flex;
   align-items: center;
   justify-content: center;
+  flex-shrink: 0;
 
-  width: 2.4rem;
-  height: 2.4rem;
+  /* fluid size */
+  width:  clamp(1.1rem, 2.5vw, 1.35rem);
+  height: clamp(1.1rem, 2.5vw, 1.35rem);
 
   border: none;
   border-radius: 50%;
+  background: var(--surface-container-high);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease, transform 0.12s ease;
+}
 
+.navbar__clearBtn:hover {
+  background: var(--error-light, #fee2e2);
+  color: var(--error, #ef4444);
+  transform: scale(1.12);
+}
+
+/* ── ⌘K hint ── */
+.navbar__kbdHint {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.1rem 0.35rem;
+  border: 1px solid var(--border);
+  border-radius: 0.3rem;
+  background: var(--surface-container-low);
+  font-family: inherit;
+  /* fluid font */
+  font-size: clamp(0.55rem, 1vw, 0.65rem);
+  color: var(--text-tertiary);
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0.7;
+  flex-shrink: 0;
+  /* hide when there's no room — below ~960px */
+  display: none;
+}
+
+@media (min-width: 960px) {
+  .navbar__kbdHint { display: inline-flex; }
+}
+
+/* ── submit button ── */
+.navbar__searchSubmit {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: clamp(0.2rem, 0.6vw, 0.38rem);
+  flex-shrink: 0;
+
+  /* match bar height fluidly */
+  height: clamp(2.1rem, 4.5vw, 2.5rem);
+
+  /* fluid horizontal padding: icon-only feel on narrow, roomy on wide */
+  padding-inline: clamp(0.55rem, 2.5vw, 1.15rem);
+
+  border: none;
+  border-radius: clamp(0.5rem, 1.5vw, 0.85rem);
+  background: var(--primary);
+  color: var(--text-inverse);
+
+  /* fluid font */
+  font-size: clamp(0.72rem, 1.4vw, 0.875rem);
+  font-weight: var(--font-semibold);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.18s ease, transform 0.12s ease, box-shadow 0.18s ease;
+}
+
+.navbar__searchSubmit:hover {
+  background: var(--primary-hover);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.25);
+}
+
+.navbar__searchSubmit:active {
+  transform: translateY(0);
+  box-shadow: none;
+}
+
+.navbar__searchSubmit--ai {
+  background: linear-gradient(135deg, #6366f1, #8b5cf6);
+}
+
+.navbar__searchSubmit--ai:hover {
+  background: linear-gradient(135deg, #4f46e5, #7c3aed);
+  box-shadow: 0 4px 14px rgba(139, 92, 246, 0.35);
+}
+
+/* Label hides when the button is too narrow to fit it */
+@media (max-width: 360px) {
+  .navbar__submitLabel { display: none; }
+}
+
+/* =====================================================
+   MODE TOGGLE ROW
+===================================================== */
+.navbar__modeRow {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: clamp(0.3rem, 1vw, 0.55rem);
+}
+
+.navbar__segmented {
+  display: flex;
+  align-items: center;
+  background: var(--surface-container-low);
+  border: 1px solid var(--border);
+  border-radius: 0.5rem;
+  padding: 2px;
+}
+
+.navbar__modeBtn {
+  display: flex;
+  align-items: center;
+  gap: clamp(0.15rem, 0.5vw, 0.28rem);
+
+  /* fluid padding */
+  padding: clamp(0.18rem, 0.5vw, 0.25rem) clamp(0.45rem, 1.2vw, 0.75rem);
+
+  border: none;
+  border-radius: calc(0.5rem - 2px);
   background: transparent;
 
+  /* fluid font */
+  font-size: clamp(0.65rem, 1.1vw, 0.75rem);
+  font-weight: var(--font-medium);
   color: var(--text-secondary);
-
   cursor: pointer;
-
-  transition:
-    background 0.25s ease,
-    color 0.25s ease,
-    transform 0.22s ease;
+  white-space: nowrap;
+  transition: background 0.15s ease, color 0.15s ease, box-shadow 0.15s ease;
 }
 
-.navbar__logout:hover {
-  background: var(--error-light);
+.navbar__modeBtn:hover { color: var(--text-primary); }
 
-  color: var(--error);
-
-  transform: translateY(-1px);
+.navbar__modeBtn--active {
+  background: var(--surface);
+  color: var(--primary);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
 }
 
-/* ========================================
-   RESPONSIVE
-======================================== */
+/* " Search" suffix on keyword button — hides when cramped */
+@media (max-width: 620px) {
+  .navbar__modeLabelKeywordFull { display: none; }
+}
 
-@media (max-width: 768px) {
+/* whole keyword label gone on xs */
+@media (max-width: 360px) {
+  .navbar__modeLabelKeyword { display: none; }
+}
+
+/* Gemini badge — fluid, hides when cramped */
+.navbar__semanticBadge {
+  display: inline-flex;
+  align-items: center;
+  padding: clamp(0.1rem, 0.3vw, 0.18rem) clamp(0.3rem, 0.8vw, 0.55rem);
+  border-radius: 999px;
+  background: linear-gradient(135deg, rgba(99,102,241,0.1), rgba(139,92,246,0.12));
+  border: 1px solid rgba(139,92,246,0.22);
+  font-size: clamp(0.55rem, 1vw, 0.65rem);
+  font-weight: var(--font-semibold);
+  color: #7c3aed;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  animation: badge-in 0.2s ease-out both;
+}
+
+@media (max-width: 580px) {
+  .navbar__semanticBadge { display: none; }
+}
+
+/* =====================================================
+   MOBILE TWO-ROW ADJUSTMENTS
+===================================================== */
+@media (max-width: 540px) {
   .navbar {
-    gap: 0.7rem;
-
-    padding-inline: 1rem;
-  }
-
-  .navbar__search {
-    max-width: none;
+    row-gap: clamp(0.35rem, 1.5vw, 0.5rem);
+    padding-inline: clamp(0.6rem, 3vw, 0.9rem);
   }
 }
 
-@media (max-width: 640px) {
-  .navbar__searchInput {
-    padding-right: 5.5rem;
-  }
+/* =====================================================
+   KEYFRAMES
+===================================================== */
+@keyframes sparkle-pulse {
+  0%, 100% { opacity: 0.75; transform: scale(1)    rotate(0deg); }
+  50%       { opacity: 1;    transform: scale(1.12) rotate(8deg); }
+}
+
+@keyframes badge-in {
+  from { opacity: 0; transform: translateX(-4px); }
+  to   { opacity: 1; transform: translateX(0); }
 }
