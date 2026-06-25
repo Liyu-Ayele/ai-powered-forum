@@ -79,10 +79,18 @@ export default function MyQuestions() {
             // ✅ FIXED AVATAR FIELD (matches Profile page)
             const avatar = q.author?.avatarUrl;
 
+            let baseUrl = backendUrl;
+            if (baseUrl.endsWith('/api')) {
+              baseUrl = baseUrl.slice(0, -4);
+            } else if (baseUrl.endsWith('/api/')) {
+              baseUrl = baseUrl.slice(0, -5);
+            }
+            baseUrl = baseUrl.replace(/\/$/, '');
+
             const avatarSrc = avatar
               ? avatar.startsWith("http")
                 ? avatar
-                : `${backendUrl}${avatar}`
+                : `${baseUrl}${avatar.startsWith('/') ? avatar : `/${avatar}`}`
               : null;
 
             return (

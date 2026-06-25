@@ -24,7 +24,18 @@ const BACKEND_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3777'
 function resolveAvatarUrl(person) {
   const raw = person?.avatarUrl || person?.avatar_url;
   if (!raw) return null;
-  return raw.startsWith('http') ? raw : `${BACKEND_URL}${raw}`;
+  if (raw.startsWith('http')) return raw;
+  
+  let baseUrl = BACKEND_URL;
+  if (baseUrl.endsWith('/api')) {
+    baseUrl = baseUrl.slice(0, -4);
+  } else if (baseUrl.endsWith('/api/')) {
+    baseUrl = baseUrl.slice(0, -5);
+  }
+  baseUrl = baseUrl.replace(/\/$/, '');
+  
+  const path = raw.startsWith('/') ? raw : `/${raw}`;
+  return `${baseUrl}${path}`;
 }
 
 /**

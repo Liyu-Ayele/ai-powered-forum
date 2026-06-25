@@ -134,9 +134,17 @@ export default function Profile() {
 
   if (!profile) return null;
 
-  const backendUrl = import.meta.env.VITE_API_BASE_URL || "http://localhost:3777";
+  const rawBackendUrl = import.meta.env.VITE_API_BASE_URL || "http://localhost:3777";
+  let backendUrl = rawBackendUrl;
+  if (backendUrl.endsWith('/api')) {
+    backendUrl = backendUrl.slice(0, -4);
+  } else if (backendUrl.endsWith('/api/')) {
+    backendUrl = backendUrl.slice(0, -5);
+  }
+  backendUrl = backendUrl.replace(/\/$/, '');
+
   const displayAvatar = profile.avatarUrl
-    ? `${backendUrl}${profile.avatarUrl}`
+    ? `${backendUrl}${profile.avatarUrl.startsWith('/') ? profile.avatarUrl : `/${profile.avatarUrl}`}`
     : `https://ui-avatars.com/api/?name=${profile.firstName}+${profile.lastName}&background=random&size=150`;
 
   return (

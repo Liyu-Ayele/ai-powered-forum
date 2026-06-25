@@ -25,7 +25,16 @@ export default function Sidebar({ isOpen, onClose }) {
     const avatar = user?.avatarUrl || user?.avatar_url;
     if (avatar) {
       if (avatar.startsWith('http')) return avatar;
-      return `${backendUrl}${avatar}`;
+      
+      let baseUrl = backendUrl;
+      if (baseUrl.endsWith('/api')) {
+        baseUrl = baseUrl.slice(0, -4);
+      } else if (baseUrl.endsWith('/api/')) {
+        baseUrl = baseUrl.slice(0, -5);
+      }
+      baseUrl = baseUrl.replace(/\/$/, '');
+      
+      return `${baseUrl}${avatar.startsWith('/') ? avatar : `/${avatar}`}`;
     }
     return `https://ui-avatars.com/api/?name=${user?.firstName || 'User'}+${user?.lastName || ''}&background=random`;
   };
