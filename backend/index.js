@@ -12,7 +12,7 @@ const port = Number(process.env.PORT) || 3777;
 
 // Middleware
 app.use(cors({
-  origin: ["http://localhost:5173", "http://localhost:3000","https://ai-powered-forum-project-itg5.onrender.com"]
+  origin: ["http://localhost:5173", "http://localhost:3000","https://ai-powered-forum-project-g4.onrender.com"]
 }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
