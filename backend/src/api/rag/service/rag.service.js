@@ -165,15 +165,7 @@ export async function createDocumentFromUploadService({ file, userId }) {
   let documentId = null;
 
   try {
-    // ── 1. Insert DB record in "processing" state ──────────────────────────
-    const documentResult = await safeExecute(
-      `INSERT INTO documents (user_id, title, mime_type, storage_path, byte_size, status)
-       VALUES (?, ?, ?, ?, ?, ?)`,
-      [userId, file.originalname, file.mimetype, null, file.size, "processing"],
-    );
-    documentId = documentResult.insertId;
-
-    // ── 2. Parse PDF from the in-memory buffer (no re-encoding possible) ──
+    // ── 1. Parse PDF from in-memory buffer first (fail fast before any DB/Cloudinary work) ──
     console.log("Processing PDF:", {
       originalName: file.originalname,
       size: file.size,
@@ -193,16 +185,18 @@ export async function createDocumentFromUploadService({ file, userId }) {
 
     if (!extractedText) throw new Error("No text could be extracted from PDF");
 
-    // ── 3. Upload the same raw buffer to Cloudinary ────────────────────────
+    // ── 2. Upload the raw buffer to Cloudinary ─────────────────────────────
     console.log("Uploading PDF buffer to Cloudinary...");
     const cloudinaryUrl = await uploadBufferToCloudinary(rawBuffer, file.originalname);
     console.log("Cloudinary URL:", cloudinaryUrl);
 
-    // Update storage_path now that we have the URL
-    await safeExecute(
-      `UPDATE documents SET storage_path = ? WHERE document_id = ?`,
-      [cloudinaryUrl, documentId],
+    // ── 3. Insert DB record now that we have the real storage_path ─────────
+    const documentResult = await safeExecute(
+      `INSERT INTO documents (user_id, title, mime_type, storage_path, byte_size, status)
+       VALUES (?, ?, ?, ?, ?, ?)`,
+      [userId, file.originalname, file.mimetype, cloudinaryUrl, file.size, "processing"],
     );
+    documentId = documentResult.insertId;
 
     // ── 4. Chunk + embed ───────────────────────────────────────────────────
     const chunks = chunkText(extractedText, 1000, 150);
