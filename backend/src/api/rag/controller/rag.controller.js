@@ -1,5 +1,3 @@
-import path from "path";
-import fs from "fs";
 import { StatusCodes } from "http-status-codes";
 import {
   listDocumentsForUserService,
@@ -73,37 +71,20 @@ export const getDocumentFileController = async (req, res, next) => {
     const userId = req.user?.id;
     const { documentId } = req.params;
     const document = await assertOwnedDocument(documentId, userId);
-    
-    // storage_path is relative path like "uploads/rag/1234567890-file.pdf"
-    const absoluteFilePath = path.resolve(process.cwd(), document.storage_path);
-    
-  
-    
-    if (!fs.existsSync(absoluteFilePath)) {
+
+    // storage_path is now a full Cloudinary HTTPS URL
+    if (!document.storage_path) {
       return res.status(StatusCodes.NOT_FOUND).json({
         success: false,
-        message: "File not found on disk",
-        path: document.storage_path,
+        message: "No file URL found for this document",
       });
     }
-    
-    // Get file stats for proper headers
-    const stat = fs.statSync(absoluteFilePath);
-    const filename = path.basename(absoluteFilePath);
-    
-    // Set headers for inline PDF viewing
-    res.setHeader("Content-Type", "application/pdf");
-    res.setHeader("Content-Length", stat.size);
-    res.setHeader("Content-Disposition", `inline; filename="${filename}"`);
-    res.setHeader("Cache-Control", "public, max-age=3600");
-    res.setHeader("Accept-Ranges", "bytes");
-    res.setHeader("X-Content-Type-Options", "nosniff");
-    
-    // Stream the file
-    const stream = fs.createReadStream(absoluteFilePath);
-    stream.pipe(res);
+
+    // Redirect the browser/client directly to the Cloudinary URL so it can
+    // stream the PDF without routing bytes through our server.
+    return res.redirect(document.storage_path);
   } catch (error) {
-    console.error('Error serving PDF:', error);
+    console.error("Error serving PDF:", error);
     next(error);
   }
 };

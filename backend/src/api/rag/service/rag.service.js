@@ -1,5 +1,3 @@
-import fs from "fs";
-import path from "path";
 import { createRequire } from "module";
 const require = createRequire(import.meta.url);
 const { PDFParse } = require("pdf-parse");
@@ -15,6 +13,7 @@ import {
 } from "../../../utils/errors/index.js";
 import { embedQuery, getGeminiClient } from "../../../utils/gemini.js";
 import { cosineSimilarity } from "../../../utils/math.js";
+import { cloudinary } from "../../../middleware/rag.upload.config.js";
 
 const K_CHUNKS = 5;
 
@@ -108,25 +107,33 @@ export const deleteDocumentService = async (documentId, userId) => {
   // Ownership check via existing service — throws NotFoundError or ForbiddenError
   const document = await getDocumentMetaService(documentId, userId);
 
-  // Delete PDF from disk; ignore missing file errors
-  try {
-    const absolutePath = path.resolve(document.storage_path);
-    fs.unlinkSync(absolutePath);
-  } catch (err) {
-    if (err.code !== "ENOENT") {
-      throw err;
+  // Delete from Cloudinary if a storage_path (URL) is present.
+  // Cloudinary raw public_id is derived from the URL path between /upload/ and the extension.
+  if (document.storage_path) {
+    try {
+      // storage_path is now the full Cloudinary URL, e.g.
+      // https://res.cloudinary.com/dhat3cisg/raw/upload/v123/forum-rag-documents/1234-filename.pdf
+      // We need to extract the public_id: "forum-rag-documents/1234-filename"
+      const url = document.storage_path;
+      const uploadIndex = url.indexOf("/upload/");
+      if (uploadIndex !== -1) {
+        // Everything after /upload/v<version>/ and before the last extension
+        let afterUpload = url.slice(uploadIndex + "/upload/".length);
+        // Strip version segment (v followed by digits)
+        afterUpload = afterUpload.replace(/^v\d+\//, "");
+        // Strip file extension
+        const publicId = afterUpload.replace(/\.[^/.]+$/, "");
+        await cloudinary.uploader.destroy(publicId, { resource_type: "raw" });
+      }
+    } catch (err) {
+      // Log but don't block deletion — DB record should still be removed
+      console.warn("Cloudinary delete failed:", err.message);
     }
   }
 
-  // Delete document record.
-  // CASCADE will automatically delete:
-  //   document_chunks
-  //   document_chunk_vectors
+  // Delete document record (CASCADE removes chunks + vectors automatically)
   await safeExecute(
-    `
-    DELETE FROM documents
-    WHERE document_id = ?
-    `,
+    `DELETE FROM documents WHERE document_id = ?`,
     [documentId],
   );
 
@@ -143,18 +150,15 @@ export async function createDocumentFromUploadService({ file, userId }) {
     throw new Error("userId is required");
   }
 
-  if (!file?.path) {
-    throw new Error("File path is missing");
+  // multer-storage-cloudinary puts the Cloudinary secure URL on file.path
+  const cloudinaryUrl = file.path;
+  if (!cloudinaryUrl) {
+    throw new Error("Cloudinary URL is missing from uploaded file");
   }
 
   let documentId = null;
 
   try {
-    // Store relative path instead of absolute path
-    const uploadDir = process.env.RAG_UPLOAD_DIR || "uploads/rag";
-    const fileName = path.basename(file.path);
-    const relativePath = path.join(uploadDir, fileName);
-
     const insertDocumentSql = `
       INSERT INTO documents
       (
@@ -172,35 +176,37 @@ export async function createDocumentFromUploadService({ file, userId }) {
       userId,
       file.originalname,
       file.mimetype,
-      relativePath,
+      cloudinaryUrl,         // full Cloudinary HTTPS URL
       file.size,
       "processing",
     ]);
 
     documentId = documentResult.insertId;
 
-    let buffer = fs.readFileSync(file.path);
-    
-    // Convert Buffer to Uint8Array (pdf-parse v2.4.5 requires Uint8Array)
-    if (Buffer.isBuffer(buffer)) {
-      buffer = new Uint8Array(buffer);
+    // Fetch the PDF from Cloudinary into a buffer for parsing
+    console.log("Fetching PDF from Cloudinary:", cloudinaryUrl);
+    const fetchResponse = await fetch(cloudinaryUrl);
+    if (!fetchResponse.ok) {
+      throw new Error(`Failed to fetch PDF from Cloudinary: ${fetchResponse.statusText}`);
     }
+    const arrayBuffer = await fetchResponse.arrayBuffer();
+    let buffer = new Uint8Array(arrayBuffer);
 
-    console.log('Processing PDF:', {
+    console.log("Processing PDF:", {
       originalName: file.originalname,
       size: file.size,
-      path: file.path
+      bufferLength: buffer.length,
     });
 
-    // Create PDF parser instance and extract text
+    // Extract text with pdf-parse
     const parser = new PDFParse(buffer);
     const result = await parser.getText();
 
     const extractedText = result.text?.trim();
 
-    console.log('PDF text extracted:', {
+    console.log("PDF text extracted:", {
       textLength: extractedText?.length || 0,
-      firstChars: extractedText?.substring(0, 100)
+      firstChars: extractedText?.substring(0, 100),
     });
 
     if (!extractedText) {
@@ -209,9 +215,9 @@ export async function createDocumentFromUploadService({ file, userId }) {
 
     const chunks = chunkText(extractedText, 1000, 150);
 
-    console.log('Text chunked:', {
+    console.log("Text chunked:", {
       totalChunks: chunks.length,
-      firstChunkLength: chunks[0]?.length
+      firstChunkLength: chunks[0]?.length,
     });
 
     if (!chunks?.length) {
@@ -259,23 +265,15 @@ export async function createDocumentFromUploadService({ file, userId }) {
       );
     }
 
-    console.log('All chunks processed successfully');
+    console.log("All chunks processed successfully");
 
     await safeExecute(
-      `
-      UPDATE documents
-      SET status = 'ready'
-      WHERE document_id = ?
-      `,
+      `UPDATE documents SET status = 'ready' WHERE document_id = ?`,
       [documentId],
     );
 
     const documents = await safeExecute(
-      `
-      SELECT *
-      FROM documents
-      WHERE document_id = ?
-      `,
+      `SELECT * FROM documents WHERE document_id = ?`,
       [documentId],
     );
 
@@ -283,12 +281,7 @@ export async function createDocumentFromUploadService({ file, userId }) {
   } catch (error) {
     if (documentId) {
       await safeExecute(
-        `
-        UPDATE documents
-        SET status = 'failed',
-            error_message = ?
-        WHERE document_id = ?
-        `,
+        `UPDATE documents SET status = 'failed', error_message = ? WHERE document_id = ?`,
         [error.message, documentId],
       );
     }
