@@ -1,6 +1,6 @@
 import multer from "multer";
 import { v2 as cloudinary } from "cloudinary";
-import { Readable } from "stream";
+import { PassThrough } from "stream";
 
 // ── Cloudinary configuration ──────────────────────────────────────────────────
 cloudinary.config({
@@ -36,8 +36,11 @@ export const createDocumentMulterErrorHandler = (err, req, res, next) => {
 
 /**
  * Upload a Buffer to Cloudinary as a raw (non-image) resource.
- * Uses pipe() instead of stream.end() to guarantee the full buffer
- * is flushed before the upload stream closes.
+ *
+ * Uses a PassThrough stream: write the full buffer in one call then end the
+ * stream. This is the canonical pattern for uploading a Buffer with the
+ * Cloudinary Node SDK — upload_stream expects a writable stream and
+ * PassThrough bridges the gap cleanly.
  *
  * @param {Buffer}  buffer       - Raw PDF bytes
  * @param {string}  originalName - Original filename (used for public_id)
@@ -56,10 +59,11 @@ export function uploadBufferToCloudinary(buffer, originalName) {
       },
     );
 
-    // Pipe a Readable built from the buffer into the upload stream.
-    // This is the reliable way to send a Buffer — stream.end(buffer) can
-    // close the stream before all bytes are flushed on some Node versions.
-    Readable.from(buffer).pipe(uploadStream);
+    // PassThrough pipes data straight through — write the full buffer as a
+    // single chunk then end, which guarantees Cloudinary receives all bytes.
+    const passThrough = new PassThrough();
+    passThrough.pipe(uploadStream);
+    passThrough.end(buffer);
   });
 }
 
