@@ -1,4 +1,7 @@
 import { StatusCodes } from "http-status-codes";
+import fs from "fs";
+import path from "path";
+import { fileURLToPath } from "url";
 import {
   listDocumentsForUserService,
   getDocumentMetaService,
@@ -8,6 +11,64 @@ import {
   queryDocumentService,
   deleteDocumentService,
 } from "../service/rag.service.js";
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const DEBUG_LOG = path.resolve(__dirname, "../../../../../debug-ec5947.log");
+
+function agentDebugLog(payload) {
+  // #region agent log
+  try {
+    fs.appendFileSync(
+      DEBUG_LOG,
+      `${JSON.stringify({ sessionId: "ec5947", timestamp: Date.now(), ...payload })}\n`,
+    );
+  } catch {
+    // ignore logging failures
+  }
+  // #endregion
+}
+
+async function fetchCloudinaryPdf(storagePath) {
+  const initialResponse = await fetch(storagePath);
+
+  // #region agent log
+  agentDebugLog({
+    hypothesisId: "A",
+    location: "rag.controller.js:fetchCloudinaryPdf:initial",
+    message: "Initial Cloudinary fetch result",
+    data: {
+      storagePathSuffix: storagePath?.slice?.(-60) ?? null,
+      hasPdfExtension: /\.pdf$/i.test(storagePath ?? ""),
+      status: initialResponse.status,
+      ok: initialResponse.ok,
+    },
+  });
+  // #endregion
+
+  if (initialResponse.ok) return initialResponse;
+
+  if (!/\.pdf$/i.test(storagePath)) {
+    const retryUrl = `${storagePath}.pdf`;
+    const retryResponse = await fetch(retryUrl);
+
+    // #region agent log
+    agentDebugLog({
+      hypothesisId: "A",
+      location: "rag.controller.js:fetchCloudinaryPdf:retry",
+      message: "Retried Cloudinary fetch with .pdf suffix",
+      data: {
+        retryUrlSuffix: retryUrl.slice(-60),
+        status: retryResponse.status,
+        ok: retryResponse.ok,
+      },
+    });
+    // #endregion
+
+    if (retryResponse.ok) return retryResponse;
+  }
+
+  return initialResponse;
+}
 
 /**
  * GET /api/rag/documents
@@ -79,8 +140,34 @@ export const getDocumentFileController = async (req, res, next) => {
       });
     }
 
-    const cloudResponse = await fetch(document.storage_path);
+    // #region agent log
+    agentDebugLog({
+      hypothesisId: "B,C",
+      location: "rag.controller.js:getDocumentFileController:entry",
+      message: "Serving document file",
+      data: {
+        documentId,
+        hasStoragePath: Boolean(document.storage_path),
+        storagePathSuffix: document.storage_path?.slice?.(-60) ?? null,
+        byteSize: document.byte_size ?? null,
+      },
+    });
+    // #endregion
+
+    const cloudResponse = await fetchCloudinaryPdf(document.storage_path);
     if (!cloudResponse.ok) {
+      // #region agent log
+      agentDebugLog({
+        hypothesisId: "A,D,E",
+        location: "rag.controller.js:getDocumentFileController:cloudinaryFailed",
+        message: "Cloudinary fetch failed after retries",
+        data: {
+          documentId,
+          status: cloudResponse.status,
+          statusText: cloudResponse.statusText,
+        },
+      });
+      // #endregion
       return res.status(StatusCodes.BAD_GATEWAY).json({
         success: false,
         message: "Failed to retrieve PDF from storage",
@@ -88,6 +175,19 @@ export const getDocumentFileController = async (req, res, next) => {
     }
 
     const pdfBuffer = Buffer.from(await cloudResponse.arrayBuffer());
+
+    // #region agent log
+    agentDebugLog({
+      hypothesisId: "A",
+      location: "rag.controller.js:getDocumentFileController:success",
+      message: "PDF fetched from Cloudinary",
+      data: {
+        documentId,
+        pdfBytes: pdfBuffer.length,
+        pdfMagic: pdfBuffer.slice(0, 5).toString("ascii"),
+      },
+    });
+    // #endregion
     const filename = (document.title || "document.pdf").replace(/[^\w\s.-]/g, "_");
 
     res.setHeader("Content-Type", document.mime_type || "application/pdf");
