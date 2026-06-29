@@ -68,27 +68,28 @@ export const queryDocument = async (documentId, query) => {
 };
 
 /**
- * Returns a URL suitable for embedding the PDF in an <iframe>.
+ * Fetches a short-lived signed URL for a PDF from the backend,
+ * then returns it for use in an <iframe>.
  *
- * We use the Cloudinary storage_path directly — it's a public HTTPS URL
- * and doesn't need to be proxied through the backend. The old /file proxy
- * endpoint was causing 502s because Cloudinary raw assets aren't publicly
- * accessible via unauthenticated fetch from the server.
+ * The /file endpoint generates a 1-hour signed Cloudinary URL,
+ * which works for both private (legacy) and public (new) uploads.
  *
- * @param {string} storagePath - The Cloudinary URL stored in the document record
- * @returns {string}
+ * @param {number|string} documentId
+ * @returns {Promise<string>} signed URL
  */
-export const getPdfUrl = (storagePath) => {
-  return storagePath;
+export const fetchPdfObjectUrl = async (documentId) => {
+  try {
+    const response = await apiClient.get(`/api/rag/documents/${documentId}/file`);
+    const url = response.data?.url;
+    if (!url) throw new Error('No URL returned from server');
+    return url;
+  } catch (error) {
+    console.error('Error fetching PDF URL:', error);
+    throw error;
+  }
 };
 
 /**
- * @deprecated Use getPdfUrl(doc.storage_path) instead.
- * Kept for backwards-compatibility; no longer proxies through the backend.
+ * @deprecated Use fetchPdfObjectUrl instead.
  */
-export const fetchPdfObjectUrl = async (_documentId, storagePath) => {
-  if (!storagePath) {
-    throw new Error('No storage path available for this document');
-  }
-  return storagePath;
-};
+export const getPdfUrl = (storagePath) => storagePath;

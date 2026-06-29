@@ -52,7 +52,12 @@ export function uploadBufferToCloudinary(buffer, originalName) {
     const publicId = `forum-rag-documents/${Date.now()}-${nameWithoutExt}`;
 
     const uploadStream = cloudinary.uploader.upload_stream(
-      { resource_type: "raw", public_id: publicId, format: "pdf" },
+      {
+        resource_type: "raw",
+        public_id: publicId,
+        format: "pdf",
+        access_mode: "public",   // allow direct browser fetch without signed URL
+      },
       (error, result) => {
         if (error) return reject(error);
         resolve(result.secure_url);

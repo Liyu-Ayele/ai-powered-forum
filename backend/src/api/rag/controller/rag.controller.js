@@ -1,4 +1,5 @@
 import { StatusCodes } from "http-status-codes";
+import { cloudinary } from "../../../middleware/rag.upload.config.js";
 import {
   listDocumentsForUserService,
   getDocumentMetaService,
@@ -66,9 +67,9 @@ export const createDocumentController = async (req, res, next) => {
 /**
  * GET /api/rag/documents/:documentId/file
  *
- * Redirects the client to the Cloudinary storage URL.
- * No server-side proxy needed — the frontend uses storage_path directly,
- * but this route is kept for direct browser links and backwards-compatibility.
+ * Returns a short-lived signed Cloudinary URL for the PDF.
+ * This works for both private (legacy) and public (new) uploads.
+ * The frontend loads the signed URL directly in the <iframe>.
  */
 export const getDocumentFileController = async (req, res, next) => {
   try {
@@ -83,7 +84,30 @@ export const getDocumentFileController = async (req, res, next) => {
       });
     }
 
-    return res.redirect(document.storage_path);
+    // Extract the public_id from the stored Cloudinary URL.
+    // URL format: https://res.cloudinary.com/<cloud>/raw/upload/v<ver>/<public_id>.pdf
+    const url = document.storage_path;
+    const uploadIndex = url.indexOf("/upload/");
+    if (uploadIndex === -1) {
+      // Not a Cloudinary URL — return as-is
+      return res.json({ success: true, url });
+    }
+
+    let afterUpload = url.slice(uploadIndex + "/upload/".length);
+    afterUpload = afterUpload.replace(/^v\d+\//, "");           // strip version
+    const publicId = afterUpload.replace(/\.[^/.]+$/, "");      // strip extension
+
+    // Generate a signed URL valid for 1 hour
+    const signedUrl = cloudinary.url(publicId, {
+      resource_type: "raw",
+      type: "upload",
+      sign_url: true,
+      expires_at: Math.floor(Date.now() / 1000) + 3600,
+      format: "pdf",
+      secure: true,
+    });
+
+    return res.json({ success: true, url: signedUrl });
   } catch (error) {
     next(error);
   }

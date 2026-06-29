@@ -6,6 +6,7 @@ import {
   deleteDocument,
   queryDocument,
   searchInDocument,
+  fetchPdfObjectUrl,
 } from '../../services/rag/rag.service';
 import { Upload, FileText, Sparkles, Search, Trash2, X, XCircle, CheckCircle, Info } from 'lucide-react';
 import Button from '../../components/Button/Button';
@@ -141,10 +142,16 @@ export default function RagDocuments() {
     }
   };
 
-  const handlePreview = (doc) => {
-    if (!doc?.storage_path) return;
-    // Use the Cloudinary URL directly — no backend proxy needed
-    setPdfUrl(doc.storage_path);
+  const handlePreview = async (doc) => {
+    if (!doc?.id) return;
+    try {
+      setPdfUrl(null);
+      const url = await fetchPdfObjectUrl(doc.id);
+      setPdfUrl(url);
+    } catch (err) {
+      console.error('Failed to load PDF:', err);
+      showToast('Failed to load PDF', err.message, 'error');
+    }
   };
 
   useEffect(() => {
