@@ -87,6 +87,17 @@ export const fetchPdfObjectUrl = async (documentId) => {
       : new Blob([response.data], { type: 'application/pdf' });
     return URL.createObjectURL(blob);
   } catch (error) {
+    if (error.response && error.response.data instanceof Blob) {
+      try {
+        const text = await error.response.data.text();
+        const json = JSON.parse(text);
+        if (json && json.message) {
+          throw new Error(json.message);
+        }
+      } catch (e) {
+        // Fallback to original error if blob cannot be parsed
+      }
+    }
     console.error('Error fetching PDF:', error);
     throw error;
   }
