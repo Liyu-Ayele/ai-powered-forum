@@ -1,6 +1,6 @@
 import { createRequire } from "module";
 const require = createRequire(import.meta.url);
-const { PDFParse } = require("pdf-parse");
+import PDFParse from "pdf-parse";
 
 import { safeExecute } from "../../../../db/config.js";
 import { chunkText } from "../../../utils/chunking.js";
@@ -51,7 +51,7 @@ export const listDocumentsForUserService = async (userId) => {
     byte_size: row.byte_size,
     status: row.status,
     error_message: row.error_message,
-    storage_path: row.storage_path,   // Cloudinary URL — used directly by the frontend
+    storage_path: row.storage_path, // Cloudinary URL — used directly by the frontend
     created_at: row.created_at,
     updated_at: row.updated_at,
   }));
@@ -123,10 +123,16 @@ export const deleteDocumentService = async (documentId, userId) => {
 
       for (const candidateId of candidates) {
         try {
-          await cloudinary.uploader.destroy(candidateId, { resource_type: "raw" });
+          await cloudinary.uploader.destroy(candidateId, {
+            resource_type: "raw",
+          });
           break;
         } catch (destroyErr) {
-          console.warn("Cloudinary delete attempt failed:", candidateId, destroyErr.message);
+          console.warn(
+            "Cloudinary delete attempt failed:",
+            candidateId,
+            destroyErr.message,
+          );
         }
       }
     } catch (err) {
@@ -144,16 +150,14 @@ export const deleteDocumentService = async (documentId, userId) => {
   );
 
   // 2. Delete chunks
-  await safeExecute(
-    `DELETE FROM document_chunks WHERE document_id = ?`,
-    [documentId],
-  );
+  await safeExecute(`DELETE FROM document_chunks WHERE document_id = ?`, [
+    documentId,
+  ]);
 
   // 3. Delete main document record
-  await safeExecute(
-    `DELETE FROM documents WHERE document_id = ?`,
-    [documentId],
-  );
+  await safeExecute(`DELETE FROM documents WHERE document_id = ?`, [
+    documentId,
+  ]);
 
   return { id: documentId };
 };
@@ -189,7 +193,10 @@ export async function createDocumentFromUploadService({ file, userId }) {
     const { secureUrl: cloudinaryUrl, publicId: cloudinaryPublicId } =
       await uploadBufferToCloudinary(Buffer.from(rawBuffer), file.originalname);
 
-    console.log("Cloudinary upload complete:", { cloudinaryUrl, cloudinaryPublicId });
+    console.log("Cloudinary upload complete:", {
+      cloudinaryUrl,
+      cloudinaryPublicId,
+    });
 
     // Sanity-check: make sure the URL is a valid HTTPS Cloudinary URL
     if (!cloudinaryUrl.startsWith("https://res.cloudinary.com/")) {
@@ -204,7 +211,11 @@ export async function createDocumentFromUploadService({ file, userId }) {
     });
 
     // pdf-parse v2 expects Uint8Array
-    const uint8 = new Uint8Array(rawBuffer.buffer, rawBuffer.byteOffset, rawBuffer.byteLength);
+    const uint8 = new Uint8Array(
+      rawBuffer.buffer,
+      rawBuffer.byteOffset,
+      rawBuffer.byteLength,
+    );
     const parser = new PDFParse(uint8);
     const result = await parser.getText();
     const extractedText = result.text?.trim();
@@ -220,7 +231,14 @@ export async function createDocumentFromUploadService({ file, userId }) {
     const documentResult = await safeExecute(
       `INSERT INTO documents (user_id, title, mime_type, storage_path, byte_size, status)
        VALUES (?, ?, ?, ?, ?, ?)`,
-      [userId, file.originalname, file.mimetype, cloudinaryUrl, file.size, "processing"],
+      [
+        userId,
+        file.originalname,
+        file.mimetype,
+        cloudinaryUrl,
+        file.size,
+        "processing",
+      ],
     );
     documentId = documentResult.insertId;
 
@@ -232,14 +250,16 @@ export async function createDocumentFromUploadService({ file, userId }) {
       firstChunkLength: chunks[0]?.length,
     });
 
-    if (!chunks?.length) throw new Error("Chunking failed: no text chunks created");
+    if (!chunks?.length)
+      throw new Error("Chunking failed: no text chunks created");
 
     for (let index = 0; index < chunks.length; index++) {
       const chunk = chunks[index];
       console.log(`Processing chunk ${index + 1}/${chunks.length}`);
 
       const embeddingResult = await generateQuestionEmbedding(chunk);
-      if (!embeddingResult?.embedding) throw new Error("Embedding generation failed");
+      if (!embeddingResult?.embedding)
+        throw new Error("Embedding generation failed");
 
       const chunkResult = await safeExecute(
         `INSERT INTO document_chunks (document_id, chunk_index, content) VALUES (?, ?, ?)`,
@@ -267,7 +287,6 @@ export async function createDocumentFromUploadService({ file, userId }) {
       [documentId],
     );
     return documents[0];
-
   } catch (error) {
     if (documentId) {
       await safeExecute(
