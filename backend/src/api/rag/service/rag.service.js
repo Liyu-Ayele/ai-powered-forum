@@ -1,6 +1,6 @@
 import { createRequire } from "module";
 const require = createRequire(import.meta.url);
-import { default as PDFParse } from "pdf-parse";
+const PDFParse = require("pdf-parse");
 
 import { safeExecute } from "../../../../db/config.js";
 import { chunkText } from "../../../utils/chunking.js";
