@@ -14,6 +14,7 @@ export const registerController = async (req, res, next) => {
     const { firstName, lastName, email, password } = req.body;
 
     const newUser = await registerService({
+      userName: req.body.userName,  // Ensure userName is passed from the request body
       firstName,
       lastName,
       email,
