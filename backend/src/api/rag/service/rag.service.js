@@ -212,8 +212,7 @@ export async function createDocumentFromUploadService({ file, userId }) {
       rawBuffer.byteOffset,
       rawBuffer.byteLength,
     );
-    const parser = new PDFParse(uint8);
-    const result = await parser.getText();
+    const result = await PDFParse(uint8);
     const extractedText = result.text?.trim();
 
     console.log("PDF text extracted:", {
