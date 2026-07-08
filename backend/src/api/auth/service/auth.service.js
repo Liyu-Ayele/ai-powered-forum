@@ -35,7 +35,6 @@ export const checkUserExists = async (email) => {
  * Registers a new user in the database.
  *
  * @param {Object} userData - The user data.
- * @param {string} userData.userName - The user's username.
  * @param {string} userData.firstName - The first name.
  * @param {string} userData.lastName - The last name.
  * @param {string} userData.email - The email address.
@@ -43,7 +42,6 @@ export const checkUserExists = async (email) => {
  * @returns {Promise<Object>} The created user object (without password).
  */
 export const registerService = async ({
-  userName,
   firstName,
   lastName,
   email,
@@ -59,11 +57,10 @@ export const registerService = async ({
   const salt = await bcrypt.genSalt(10); // generates a unique random salt each call
   const hashedPassword = await bcrypt.hash(password, salt);
   const sql =
-    "INSERT INTO users (user_name, first_name, last_name, email, password_hash) VALUES (?, ?, ?, ?, ?)";
+    "INSERT INTO users (first_name, last_name, email, password_hash) VALUES (?, ?, ?, ?)";
   let result;
   try {
     result = await safeExecute(sql, [
-      userName,
       firstName,
       lastName,
       normalizedEmail,
