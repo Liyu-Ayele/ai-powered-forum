@@ -61,6 +61,7 @@ export const registerService = async ({
   let result;
   try {
     result = await safeExecute(sql, [
+      userName,
       firstName,
       lastName,
       normalizedEmail,
