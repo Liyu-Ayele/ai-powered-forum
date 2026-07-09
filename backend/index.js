@@ -16,7 +16,7 @@ app.set('trust proxy', 1);
 
 // Middleware
 app.use(cors({
-  origin: ["http://localhost:5173", "https://ai-powered-forum-sage.vercel.app","https://ai-powered-forum-project.vercel.app","https://evangadi-forum.tesfaworku.com", "http://localhost:3000","https://ai-powered-forum-project-g4.onrender.com","https://ai-powered-forum-a4jpe5wge-liyu-ayeles-projects.vercel.app"],
+  origin: ["http://localhost:5173", "https://ai-powered-forum-sage.vercel.app","https://ai-powered-forum-project.vercel.app","https://evangadi-forum.tesfaworku.com",  "http://localhost:3000","https://ai-powered-forum-project-g4.onrender.com","https://ai-powered-forum-a4jpe5wge-liyu-ayeles-projects.vercel.app", "https://ai-powered-forum-vxk6pagq6-liyu-ayeles-projects.vercel.app",],
   methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
   allowedHeaders: ["Content-Type", "Authorization"],
   credentials: true
