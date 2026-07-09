@@ -24,7 +24,6 @@ export default function Auth() {
   const [isLogin, setIsLogin] = useState(true);
 
   // Registration form state
-  const [userName, setUserName] = useState('');
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [email, setEmail] = useState('');
@@ -124,7 +123,6 @@ export default function Auth() {
       } else {
         // Registration flow
         await register({
-          userName: trimmedUserName,
           firstName: trimmedFirstName,
           lastName: trimmedLastName,
           email: normalizedEmail,
