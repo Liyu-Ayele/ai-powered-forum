@@ -1,6 +1,6 @@
 import { createRequire } from "module";
 const require = createRequire(import.meta.url);
-const PDFParse = require("pdf-parse").default;
+const { PDFParse } = require("pdf-parse");
 
 import { safeExecute } from "../../../../db/config.js";
 import { chunkText } from "../../../utils/chunking.js";
@@ -29,10 +29,12 @@ export const listDocumentsForUserService = async (userId) => {
   const sql = `
     SELECT 
       document_id,
-      file_name,
-      file_size,
+      title,
+      mime_type,
+      byte_size,
       status,
-      file_path,
+      error_message,
+      storage_path,
       created_at,
       updated_at
     FROM documents
@@ -44,10 +46,12 @@ export const listDocumentsForUserService = async (userId) => {
 
   return rows.map((row) => ({
     document_id: row.document_id,
-    file_name: row.file_name,
-    file_size: row.file_size,
+    title: row.title,
+    mime_type: row.mime_type,
+    byte_size: row.byte_size,
     status: row.status,
-    file_path: row.file_path,
+    error_message: row.error_message,
+    storage_path: row.storage_path, // Cloudinary URL — used directly by the frontend
     created_at: row.created_at,
     updated_at: row.updated_at,
   }));
@@ -212,7 +216,8 @@ export async function createDocumentFromUploadService({ file, userId }) {
       rawBuffer.byteOffset,
       rawBuffer.byteLength,
     );
-    const result = await PDFParse(uint8);
+    const parser = new PDFParse(uint8);
+    const result = await parser.getText();
     const extractedText = result.text?.trim();
 
     console.log("PDF text extracted:", {
