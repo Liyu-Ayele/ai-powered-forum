@@ -266,13 +266,7 @@ export default function Auth() {
                       <label htmlFor='firstName' className={styles.auth__label}>
                         First Name
                       </label>
-                      <input
-  type="text"
-  placeholder="Username"
-  value={userName}
-  onChange={(e) => setUserName(e.target.value)}
-  required
-/>
+                      
                       <input
                         id='firstName'
                         type='text'
